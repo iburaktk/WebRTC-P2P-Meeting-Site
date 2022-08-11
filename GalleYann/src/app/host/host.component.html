@@ -1,0 +1,27 @@
+<div style="height: 100%; display: grid;" [style.grid-template-columns]="getGridSide()">
+  <div style="align-items: center; height: 90%; display: flex; flex-direction: column; overflow: hidden;">
+    <div class="videoGrid" id="remote-video" [style.grid-template-columns]="gridTemplateColumns"></div>
+  </div>
+  <div class="chatSide" [style.display]="sideDisplay">
+    <app-chat></app-chat>
+  </div>
+</div>
+
+<div class="footer">
+  <button id="micButton" class="button myButton" (click)="toggleMic()">
+    <img src="{{ micImagePath }}" class="buttonImage"/>
+  </button>
+  <button id="camButton" class="button myButton" (click)="toggleCam()">
+    <img src="{{ camImagePath }}" class="buttonImage"/>
+  </button>
+  <button id="screenButton" class="button myButton" (click)="toggleScreen()" style="padding: 2%;" [style.background-color]="screenImageColor">
+    <img src="{{ screenImagePath }}" class="buttonImage"/>
+  </button>
+  <button id="chatButton" class="button myButton" (click)="toggleChat()" style="padding: 3%;">
+    <img src="assets/chat.png" class="buttonImage"/>
+  </button>
+  <button id="peopleButton" class="button myButton" (click)="togglePeople()" style="padding: 1%;">
+    <img src="assets/people.png" class="buttonImage"/>
+  </button>
+</div>
+

@@ -1,0 +1,31 @@
+<div class="chat-box-main">
+  <div class="chat-box-messages">
+    <ng-container *ngFor="let message of messages">
+
+      <div class="chat-message" [class.chat-message-received]="!message.isSent" [class.chat-message-sent]="message.isSent">
+
+        <div class="chat-message-text">
+          {{message.text}}
+        </div>
+      </div>
+      <div class="chat-message-date" [class.chat-message-received]="!message.isSent" [class.chat-message-sent]="message.isSent">
+        {{message.date | date : 'short'}}
+      </div>
+    </ng-container>
+  </div>
+  <div class="chat-box-footer">
+
+    <textarea id="inputMessage" placeholder="Enter your message here" class="chat-box-footer-input" [(ngModel)]="messageText"></textarea>
+    <div style="display: flex; flex-direction: column; flex: 1; height: 100%; aspect-ratio: 0.5; margin: 0px 0px 0px 10px;">
+
+      <button class="chat-box-footer-input-button" (click)="sendMessage()">
+        <img src="assets/enter.png" style="width: 100%;"/>
+      </button>
+      <button class="chat-box-footer-input-button" (click)="uploadFile()">
+        <img src="assets/upload.png" style="width: 100%;"/>
+      </button>
+
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,44 @@
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 10%;
+  display: flex;
+  align-items: center;
+  background-color: rgba(252, 186, 0, 1);;
+  color: white;
+  font-weight: 600;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.myButton {
+  height: 100%;
+  padding: 0%;
+  border: 0;
+  background: transparent;
+  margin: 0px;
+  overflow: hidden;
+}
+
+.buttonImage {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.videoGrid {
+  display: grid;
+  margin: 1% 1% 11% 1%;
+}
+
+.videoElement {
+  background-color: black;
+}
+
+.chatSide {
+  height: 100%;
+  position: relative;
+}
