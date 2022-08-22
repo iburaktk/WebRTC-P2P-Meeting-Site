@@ -1,9 +1,8 @@
 import { AfterViewInit, Component, OnInit } from '@angular/core';
 import { Peer } from 'peerjs';
 import { ActivatedRoute, ParamMap } from '@angular/router';
-import { Observable, Subscription } from 'rxjs';
 import { SharedService } from '../shared-service.service';
-
+import * as FileSaver from 'file-saver';
 @Component({
   selector: 'app-client',
   templateUrl: './client.component.html',
@@ -14,6 +13,9 @@ export class ClientComponent implements AfterViewInit {
   peerIdShare : string;
   private lazyStream: any;
   private connChannel: any;
+  private fileConnChannel : any;
+  private currentFile : any;
+  private fileName : string;
   currentPeer: any;
   private peerList: Array<any> = [];
   mic : boolean;
@@ -40,7 +42,7 @@ export class ClientComponent implements AfterViewInit {
     this.micImagePath = "assets/MicOn.png";
     this.camImagePath = "assets/CamOn.png";
     this.screenImagePath = "assets/ScreenOff.png";
-    this.screenImageColor = "rgba(241, 20, 89, 1)";
+    this.screenImageColor = "rgb(241, 20, 89)";
     this.gridTemplateColumns = "1fr 1fr";
     this.sideScreenWidth = 0;
     this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
@@ -48,12 +50,30 @@ export class ClientComponent implements AfterViewInit {
     this.isPeopleScreenOpen = false;
     this.sideDisplay = "none";
     this.peerIdShare = "";
+    this.fileName = "";
 
-    _sharedService.changeEmitted$.subscribe(text => {
-      let textStr = text as string;
-      if (textStr.startsWith("message")) {
-        textStr = textStr.substring(8);
-        this.connChannel.send(textStr);
+    _sharedService.changeEmitted$.subscribe(data => {
+      try {
+        let textStr = data as string;
+        if (typeof textStr == 'string') {
+          if (textStr.startsWith("message")) {
+            textStr = textStr.substring(8);
+            this.connChannel.send(textStr);
+          }
+          else if (textStr.startsWith("file")) {
+            this.fileConnChannel?.send("name "+textStr.substring(5));
+          }
+          else if (textStr.startsWith("acceptFile")) {
+            this.fileConnChannel?.send("acceptFile");
+          }
+          else { // id, new, requestToSendFile
+            console.log("??? ss else came: "+textStr);
+          }
+        }
+        else
+          this.currentFile = data;
+      } catch (ex) {
+        console.log(ex);
       }
     });
   }
@@ -117,9 +137,6 @@ export class ClientComponent implements AfterViewInit {
   }
 
   public toggleChat() {
-    // update
-    //this.connectMessageChannel();
-
     this.isChatScreenOpen = !this.isChatScreenOpen;
     if (this.isChatScreenOpen) {
       this.isPeopleScreenOpen = false;
@@ -137,19 +154,7 @@ export class ClientComponent implements AfterViewInit {
 
   }
 
-  public connectMessageChannel() {
-    var conn = this.peer.connect(this.peerIdShare);
-    this.connChannel = conn;
-    conn.on('open', () => {
-      conn.on('data', (data) => {
-        console.log(data);
-        this._sharedService.emitChange("new "+data);
-      })
-    })
-  }
-
-  public sendMessage(message : string)
-  {
+  public sendMessage(message : string) {
     this.connChannel.send(message);
   }
 
@@ -208,6 +213,45 @@ export class ClientComponent implements AfterViewInit {
     })
     */
   }
+
+  public connectMessageChannel() {
+    var conn = this.peer.connect(this.peerIdShare, {label:"message"});
+    this.connChannel = conn;
+    conn.on('open', () => {
+      conn.on('data', (data) => {
+        console.log(data);
+        this._sharedService.emitChange("new "+data);
+      })
+    });
+    var fileConn = this.peer.connect(this.peerIdShare, {label:"ftp"});
+    this.fileConnChannel = fileConn;
+    fileConn.on('open', () => {
+      fileConn.on('data', (data) => {
+        try {
+          let textStr = data as string;
+          if (typeof textStr == 'string') {
+            if (textStr.startsWith("name")) {
+              this.fileName = textStr.substring(5);
+              this._sharedService.emitChange("requestToSendFile "+this.fileName);
+            }
+            else if (textStr.startsWith("acceptFile")) {
+              this.fileConnChannel.send(this.currentFile);
+            }
+          }
+          else {
+            var myData = data as ArrayBuffer;
+            var myBlob = new Blob([new Uint8Array(myData, 0, myData.byteLength)]);
+            FileSaver.saveAs(myBlob,this.fileName);
+            // successfull to ss for success screen
+          }
+        } catch (error) {
+          console.log(error);
+        }
+
+      })
+    })
+  }
+
 
   async connectWithPeer(): Promise<void> {
     if (this.peerIdShare == "")

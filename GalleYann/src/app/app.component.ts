@@ -9,33 +9,25 @@ import { SharedService } from './shared-service.service';
 })
 export class AppComponent {
   peerIdText = "";
-  /*
-  public forecasts?: WeatherForecast[];
-
-  http.get<WeatherForecast[]>('/weatherforecast').subscribe(result => {
-      this.forecasts = result;
-    }, error => console.error(error));
-
-  interface WeatherForecast {
-    date: string;
-    temperatureC: number;
-    temperatureF: number;
-    summary: string;
-  }
-  */
 
   constructor(private _sharedService: SharedService) {
-    _sharedService.changeEmitted$.subscribe(text => {
-      let textStr = text as string;
-      const region = document.getElementById('peerRegion') || null;
-      if (textStr.startsWith("id")) {
-        textStr = textStr.substring(3);
-        this.peerIdText = textStr;
-        region?.style.setProperty("display", "inline-flex");
+    _sharedService.changeEmitted$.subscribe(data => {
+      try {
+        let textStr = data as string;
+        if (typeof textStr != 'string') throw new Error("Not a string, maybe a file?")
+        const region = document.getElementById('peerRegion') || null;
+        if (textStr.startsWith("id")) {
+          textStr = textStr.substring(3);
+          this.peerIdText = textStr;
+          region?.style.setProperty("display", "inline-flex");
+        }
+        else if (textStr == "hide")
+          region?.style.setProperty("display", "none");
+        //else console.log(text);
+      } catch (error : any) {
+        console.log(error.message);
       }
-      else if (textStr == "hide")
-        region?.style.setProperty("display", "none");
-      //else console.log(text);
+
     });
   }
 

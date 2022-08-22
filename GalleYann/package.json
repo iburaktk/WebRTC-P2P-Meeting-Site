@@ -19,16 +19,19 @@
     "@angular/platform-browser": "^14.1.0",
     "@angular/platform-browser-dynamic": "^14.1.0",
     "@angular/router": "^14.1.0",
-    "peerjs": "^1.4.6",
+    "@types/node": "^18.7.6",
+    "jest-editor-support": "*",
+    "peerjs": "^1.4.7",
     "rxjs": "~7.5.0",
     "tslib": "^2.3.0",
-    "zone.js": "~0.11.4",
-    "jest-editor-support": "*"
+    "zone.js": "~0.11.4"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^14.1.0",
     "@angular/cli": "~14.1.0",
     "@angular/compiler-cli": "^14.1.0",
+    "@angular-builders/custom-webpack": "^7.0.0",
+    "@angular-builders/dev-server": "^7.0.0",
     "@types/jasmine": "~4.0.0",
     "jasmine-core": "~4.2.0",
     "karma": "~6.4.0",
@@ -36,6 +39,8 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.0.0",
-    "typescript": "~4.7.2"
+    "typescript": "~4.7.2",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
   }
 }

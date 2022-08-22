@@ -1,0 +1,36 @@
+chat -> 
+	SharedService
+		new ->	Yeni gelen mesaj
+		requestToSendFile ->	yeni dosya gönderme isteği diyaloğu
+		-> acceptFile	-->	tuşa basınca kabul ettiğini bildir host/client'a
+		-> message		-->	mesajları host/client'a gönder.
+		-> file 		-->	filename'i gönder
+		-> data			--> dosyayı gönder
+
+client ->
+	SharedService
+		message -> chat'te yazdığın mesajı host'a gönder
+		file -> dosya ismini ChatComponent'ten al ve host'a gönder
+		acceptFile -> chat'ten kabul isteğini al, client'a gönder. Transaction başlasın
+		else -> logla	== id, new, requestToSendFile
+		data -> dosyayı chat'te oku ve client'a kaydet
+	MessageChannel
+		data -> ChatComponent'a gelen mesajı ilet
+	FileChannel
+		name -> dosya ismini host'tan al. ChatComponent'a request at -> ss requestToSendFile
+		acceptFile -> host kabul etmiş. Dosyayı gönder
+		data -> FileSaver.saveAs
+
+host ->
+	SharedService
+		message ->  chat'te yazdığın mesajı client'a gönder
+		file -> dosya ismini ChatComponent'ten al ve host'a gönder
+		acceptFile -> chat'ten kabul isteğini al, client'a gönder. Transaction başlasın
+		else -> logla	== id, new, requestToSendFile
+		data -> dosyayı chat'te oku ve host'a kaydet
+	MessageChannel
+		data -> ChatComponent'a gelen mesajı ilet
+	FileChannel
+		name -> dosya ismini host'tan al. ChatComponent'a request at -> ss requestToSendFile
+		acceptFile -> host kabul etmiş. Dosyayı gönder
+		data -> FileSaver.saveAs

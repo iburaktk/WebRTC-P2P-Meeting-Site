@@ -1,6 +1,5 @@
 .chat-box-main {
-  background-color: rgb(200, 191, 231);
-  height: 90vh;
+  height: 100%;
   width: 100%;
   max-height: 100%;
   margin: 0px;
@@ -11,26 +10,32 @@
 .chat-box-messages {
   display: flex;
   flex-direction: column-reverse;
-  height: 75%;
-  background-color: white;
-  width: 90%;
-  margin: 5%;
+  height: 75vh;
+  background-color: #f5f5f5;
+  width: 96%;
+  margin: 2%;
   overflow: auto;
+  border-radius: 10px;
 }
 
 .chat-box-footer {
   height: 15%;
-  width: 90%;
-  margin: 0px 5% 5% 5%;
-  /*background-color: rgb(200, 191, 231);*/
+  width: 96%;
+  margin: 0px 2% 0% 2%;
   display: flex;
   flex-direction: row;
 }
 
 .chat-box-footer-input {
   width: 83%;
+  padding: 10px;
+  font-family: 'Inter';
+  font-size: 14px;
   overflow: overlay;
   resize: none;
+  background-color: #f5f5f5;
+  border-radius: 10px;
+  border: 0px;
 }
 
 .chat-box-footer-input-button {
@@ -45,32 +50,64 @@
 .chat-message {
   display: block;
   flex-direction: row;
-  width: auto;
+  min-width: 35%;
   max-width: 75%;
-  word-wrap: break-word;
-  border-radius: 3px;
-  background-color: grey;
-  margin: 5px 15px 10px 15px;
+  margin: 5px 15px 0px 15px;
 }
 
 .chat-message-received {
   align-self: flex-start;
-  background-color: darkseagreen;
+  background-color: #86BB71;
+  border-radius: 15px 15px 15px 0px;
 }
 
 .chat-message-sent {
   align-self: flex-end;
-  background-color: cyan;
+  background-color: #94C2ED;
+  border-radius: 15px 15px 0px 15px;
 }
 
 .chat-message-text {
-  color: black;
-  padding: 10px;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 15px;
+  word-wrap: break-word;
+  max-width: 85%;
+}
+
+.chat-message-text-sent {
+  float: right;
 }
 
 .chat-message-date {
   font-size: 11px;
-  color: #8D898D;
-  margin: 0px 10px;
+  color: #a8aab1;
+  margin: 0px 25px;
   background-color: transparent !important;
+}
+
+.chat-message-sentBy {
+  font-size: 13px;
+  font-weight: 600;
+  color: black;
+  margin: 0px 15px 10px 15px;
+}
+
+.chat-message-sentBy-sent {
+  align-self: flex-end;
+}
+
+.file-name-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: blue;
+  margin: 15px 15px 5px 15px;
+
+}
+
+.file-box-button {
+  height: 20px;
+  width: 70px;
+  margin: 5px 15px 15px 15px;
 }

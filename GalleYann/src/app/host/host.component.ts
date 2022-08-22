@@ -1,6 +1,7 @@
 import { SharedService } from './../shared-service.service';
 import { Component, OnInit, Output, EventEmitter, AfterViewInit } from '@angular/core';
 import { Peer } from 'peerjs';
+import * as FileSaver from 'file-saver';
 
 @Component({
   selector: 'app-host',
@@ -13,6 +14,9 @@ export class HostComponent implements AfterViewInit {
   peerId = "";
   private lazyStream: any;
   private connChannel: any;
+  private fileConnChannel : any;
+  private currentFile : any;
+  private fileName : string;
   currentPeer: any;
   private peerList: Array<any> = [];
   mic : boolean;
@@ -51,24 +55,39 @@ export class HostComponent implements AfterViewInit {
     this.isChatScreenOpen = false;
     this.isPeopleScreenOpen = false;
     this.sideDisplay = "none";
-  }
+    this.fileName = "";
 
+    this.toggleChat(); // sil
+
+    _sharedService.changeEmitted$.subscribe(data => {
+      try {
+        let textStr = data as string;
+        if (typeof textStr == 'string') {
+          if (textStr.startsWith("message")) {
+            textStr = textStr.substring(8);
+            this.connChannel.send(textStr);
+          }
+          else if (textStr.startsWith("file")) {
+            this.fileConnChannel?.send("name "+textStr.substring(5));
+          }
+          else if (textStr.startsWith("acceptFile")) {
+            this.fileConnChannel?.send("acceptFile");
+          }
+          else { // id, new, requestToSendFile
+            console.log("??? ss else came: "+textStr);
+          }
+        }
+        else
+          this.currentFile = data;
+      } catch (ex) {
+        console.log(ex);
+      }
+    });
+  }
 
   ngAfterViewInit(): void {
     this.getPeerId();
     window.addEventListener('resize', this.func);
-    this._sharedService.changeEmitted$.subscribe(text => {
-      try {
-        var textStr = text as string;
-        if (textStr.startsWith("message")) {
-          textStr = textStr.substring(8);
-          this.connChannel.send(textStr);
-        }
-      }
-      catch (ex) {
-        console.log("Error: You are not connected yet for messaging. "+ex);
-      }
-    });
   }
 
   func = (resizeEvent : UIEvent) => {
@@ -140,8 +159,8 @@ export class HostComponent implements AfterViewInit {
       this._sharedService.emitChange("id "+this.peerId);
     });
 
-
-      this.peer.on('connection', (conn) => {
+    this.peer.on('connection', (conn) => {
+      if (conn.label == "message") {
         this.connChannel = conn;
         conn.on("data", (data) => {
           console.log(data);
@@ -150,7 +169,36 @@ export class HostComponent implements AfterViewInit {
         conn.on("open", () => {
           // do something
         });
-      })
+      }
+      else if (conn.label == "ftp") {
+        this.fileConnChannel = conn;
+        conn.on('data', (data) => {
+          try {
+            let textStr = data as string;
+            if (typeof textStr == 'string') {
+              if (textStr.startsWith("name")) {
+                this.fileName = textStr.substring(5);
+                this._sharedService.emitChange("requestToSendFile "+this.fileName);
+              }
+              else if (textStr.startsWith("acceptFile")) {
+                this.fileConnChannel.send(this.currentFile);
+              }
+            }
+            else {
+              var myData = data as ArrayBuffer;
+              var myBlob = new Blob([new Uint8Array(myData, 0, myData.byteLength)]);
+              FileSaver.saveAs(myBlob,this.fileName);
+              // successfull to ss for success screen
+            }
+          } catch (error) {
+            console.log(error);
+          }
+        });
+        conn.on("open", () => {
+          // do something
+        });
+      }
+    })
 
     this.peer.on('call', (call) => {
       navigator.mediaDevices.getUserMedia({
@@ -196,6 +244,11 @@ export class HostComponent implements AfterViewInit {
 
 
   }
+
+  /*
+    response to connectToPeer -> give peer list to them
+    make them call you
+  */
 
   private streamRemoteVideo(remoteStream: any): void {
     const video = document.createElement('video');

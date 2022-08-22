@@ -1,3 +1,5 @@
+// using Oracle.ManagedDataAccess.Client;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -22,16 +24,36 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
-
-/*
-// Connection string format: User Id=[username];Password=[password];Data Source=[hostname]:[port]/[DB service name];
-OracleConnection con = new OracleConnection("User Id=SYS;Password=Burak03!;Data Source=localhost:1521/XEPDB1;");
-con.Open();
-OracleCommand cmd = con.CreateCommand();
-cmd.CommandText = "SELECT \'Hello World!\' FROM dual";
- 
-OracleDataReader reader = cmd.ExecuteReader();
-reader.Read();
-Console.WriteLine(reader.GetString(0)); 
- * */
+app.Run( 
+    /*
+    async (context) =>
+{
+    Console.WriteLine("Started");
+    string connectionString = "User Id=SYS;Password={pass};Data Source=localhost:1521/XEPDB1";
+    OracleConnection connection = new OracleConnection(connectionString);
+    OracleCommand command = connection.CreateCommand();
+    try
+    {
+        connection.Open();
+        command.BindByName = true;
+        command.CommandText = "select :myParameter from user_tables;";
+        OracleParameter myParameter = new OracleParameter("myParameter", "*");
+        command.Parameters.Add(myParameter);
+        OracleDataReader reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            Console.WriteLine(reader.GetString(0));
+            await context.Response.WriteAsync(reader.GetString(0));
+        }
+        reader.Dispose();
+        Console.WriteLine("The end");
+        Thread.Sleep(500000);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Error: " + ex.Message);
+        await context.Response.WriteAsync(ex.Message);
+    }
+}
+*/
+);
