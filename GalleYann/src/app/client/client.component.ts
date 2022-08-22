@@ -10,14 +10,15 @@ import * as FileSaver from 'file-saver';
 })
 export class ClientComponent implements AfterViewInit {
   private peer: Peer;
+  peerId = "";
   peerIdShare : string;
-  private lazyStream: any;
+  private myStream: any;
   private connChannel: any;
   private fileConnChannel : any;
   private currentFile : any;
   private fileName : string;
-  currentPeer: any;
   private peerList: Array<any> = [];
+  private peerConnectionList : Array<RTCPeerConnection> = [];
   mic : boolean;
   cam : boolean;
   screen : boolean;
@@ -66,9 +67,10 @@ export class ClientComponent implements AfterViewInit {
           else if (textStr.startsWith("acceptFile")) {
             this.fileConnChannel?.send("acceptFile");
           }
+          /*
           else { // id, new, requestToSendFile
             console.log("??? ss else came: "+textStr);
-          }
+          }*/
         }
         else
           this.currentFile = data;
@@ -104,8 +106,8 @@ export class ClientComponent implements AfterViewInit {
 
   public toggleMic() {
     this.mic = ! this.mic;
-    for (let index in this.lazyStream.getAudioTracks())
-      this.lazyStream.getAudioTracks()[index].enabled = this.mic;
+    for (let index in this.myStream.getAudioTracks())
+      this.myStream.getAudioTracks()[index].enabled = this.mic;
     if (!this.mic)
       this.micImagePath = "assets/MicOff.png";
     else
@@ -114,8 +116,8 @@ export class ClientComponent implements AfterViewInit {
 
   public toggleCam() {
     this.cam = ! this.cam;
-    for (let index in this.lazyStream.getVideoTracks())
-      this.lazyStream.getVideoTracks()[index].enabled = this.cam;
+    for (let index in this.myStream.getVideoTracks())
+      this.myStream.getVideoTracks()[index].enabled = this.cam;
     if (!this.cam)
       this.camImagePath = "assets/CamOff.png";
     else
@@ -124,16 +126,10 @@ export class ClientComponent implements AfterViewInit {
 
   public async toggleScreen() {
     this.screen = ! this.screen;
-    if (this.screen) {
-      this.screenImagePath = "assets/ScreenOn.png"; // cache al
-      this.screenImageColor = "rgba(80, 179, 63, 1)";
+    if (this.screen)
       this.shareScreen();
-    }
-    else {
-      this.screenImagePath = "assets/ScreenOff.png";
-      this.screenImageColor = "rgba(241, 20, 89, 1)";
+    else
       this.stopScreenShare();
-    }
   }
 
   public toggleChat() {
@@ -159,26 +155,24 @@ export class ClientComponent implements AfterViewInit {
   }
 
   private getPeerId = () => {
-    /*
     this.peer.on('open', (id) => {
       this.peerId = id;
     });
-    */
-    /*
+
     this.peer.on('call', (call) => {
-      navigator.mediaDevices.getUserMedia({
-        video: {
-          aspectRatio: 16/9
-        },
-        audio: true
-      }).then((stream) => {
-        this.lazyStream = stream;
-        if (this.isFirst)
-        {
+      if (this.isFirst) {
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            aspectRatio: 16/9
+          },
+          audio: true
+        }).then((stream) => {
+          this.myStream = stream;
           const video = document.createElement('video');
           video.style.setProperty("margin","5px");
           video.classList.add('video');
-          video.srcObject = this.lazyStream;
+          video.autoplay = true;
+          video.srcObject = this.myStream;
           video.id = "video-0";
           video.className="videoElement";
           video.play();
@@ -191,27 +185,71 @@ export class ClientComponent implements AfterViewInit {
           // @ts-ignore
           video.disablePictureInPicture = true;
           videoElement.append(video);
+          this.updateScreenPlacement(window.innerHeight);
           this.isFirst = false;
-        }
-        call.answer(stream);
+          call.answer(this.myStream);
+          call.on('stream', (remoteStream) => {
+            if (!this.peerList.includes(call.peer)) {
+              this.peerConnectionList.push(call.peerConnection);
+              this.peerList.push(call.peer);
+              this.streamRemoteVideo(remoteStream);
+            }
+          });
+        }).catch(err => {
+          console.log(err + 'Unable to get media');
+        });
+      } else {
+        call.answer(this.myStream);
         call.on('stream', (remoteStream) => {
           if (!this.peerList.includes(call.peer)) {
-            this.currentPeer = call.peerConnection;
+            this.peerConnectionList.push(call.peerConnection);
             this.peerList.push(call.peer);
             this.streamRemoteVideo(remoteStream);
           }
         });
-      }).catch(err => {
-        console.log(err + 'Unable to get media');
-      });
+      }
     });
 
     this.peer.on('connection', (conn) => {
-      this.connChannel = conn;
-      conn.send("Hello there!");
-      console.log("conn came");
+      if (conn.label == "message") {
+        this.connChannel = conn;
+        conn.on("data", (data) => {
+          console.log(data);
+          this._sharedService.emitChange("new "+data);
+        });
+        conn.on("open", () => {
+          // do something
+        });
+      }
+      else if (conn.label == "ftp") {
+        this.fileConnChannel = conn;
+        conn.on('data', (data) => {
+          try {
+            let textStr = data as string;
+            if (typeof textStr == 'string') {
+              if (textStr.startsWith("name")) {
+                this.fileName = textStr.substring(5);
+                this._sharedService.emitChange("requestToSendFile "+this.fileName);
+              }
+              else if (textStr.startsWith("acceptFile")) {
+                this.fileConnChannel.send(this.currentFile);
+              }
+            }
+            else {
+              var myData = data as ArrayBuffer;
+              var myBlob = new Blob([new Uint8Array(myData, 0, myData.byteLength)]);
+              FileSaver.saveAs(myBlob,this.fileName);
+              // successfull to ss for success screen
+            }
+          } catch (error) {
+            console.log(error);
+          }
+        });
+        conn.on("open", () => {
+          // do something
+        });
+      }
     })
-    */
   }
 
   public connectMessageChannel() {
@@ -268,18 +306,18 @@ export class ClientComponent implements AfterViewInit {
       },
       audio: true
     }).then((stream) => {
-      this.lazyStream = stream;
+      this.myStream = stream;
       const call = this.peer.call(id, stream);
       call.on('stream', (remoteStream) => {
         if (!this.peerList.includes(call.peer)) {
-          this.currentPeer = call.peerConnection;
+          this.peerConnectionList.push(call.peerConnection);
           this.peerList.push(call.peer);
           if (this.isFirst)
           {
             const video = document.createElement('video');
             video.style.setProperty("margin","5px");
             video.classList.add('video');
-            video.srcObject = this.lazyStream;
+            video.srcObject = this.myStream;
             video.id = "video-0";
             video.className="videoElement";
             video.play();
@@ -325,7 +363,6 @@ export class ClientComponent implements AfterViewInit {
   public updateScreenPlacement(windowHeight : number) {
     this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
     windowHeight *= 1.1;
-    //console.log("h: "+windowHeight+" h*1.77: "+windowHeight*1.77+" w: "+this.videoWidth +" wiw: "+window.innerWidth);
     let count = this.peerList.length;
     let newHeight = 0;
     switch (count) {
@@ -388,11 +425,22 @@ export class ClientComponent implements AfterViewInit {
     navigator.mediaDevices.getDisplayMedia().then(stream => {
       const videoTrack = stream.getVideoTracks()[0];
       videoTrack.onended = () => {
-        this.stopScreenShare();
+        if (this.screen)
+          this.toggleScreen();
       };
+      this.peerConnectionList.forEach( (peer) => {
+        // @ts-ignore
+        const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
+        // @ts-ignore
+        sender.replaceTrack(videoTrack);
+      });
+
+      const videoElement = document.getElementById('video-0') || null;
       // @ts-ignore
-      const sender = this.currentPeer.getSenders().find(s => s.track.kind === videoTrack.kind);
-      sender.replaceTrack(videoTrack);
+      videoElement.srcObject = new MediaStream([videoTrack]);
+
+      this.screenImagePath = "assets/ScreenOn.png"; // cache al
+      this.screenImageColor = "rgba(80, 179, 63, 1)";
       // @ts-ignore
     }).catch(err => {
       console.log('Unable to get display media ' + err);
@@ -400,10 +448,22 @@ export class ClientComponent implements AfterViewInit {
   }
 
   private stopScreenShare(): void {
-    const videoTrack = this.lazyStream.getVideoTracks()[0];
-    // @ts-ignore
-    const sender = this.currentPeer.getSenders().find(s => s.track.kind === videoTrack.kind);
-    sender.replaceTrack(videoTrack);
+    this.screenImagePath = "assets/ScreenOff.png";
+    this.screenImageColor = "rgba(241, 20, 89, 1)";
+
+    const videoTrack = this.myStream.getVideoTracks()[0];
+    this.peerConnectionList.forEach( (peer) => {
+      // @ts-ignore
+      const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
+      sender?.track?.stop();
+      sender?.track?.dispatchEvent(new Event("ended"));
+      // @ts-ignore
+      sender.replaceTrack(videoTrack);
+    });
+
+    const videoElement = document.getElementById('video-0') || null;
+      // @ts-ignore
+      videoElement.srcObject = new MediaStream([videoTrack]);
   }
 
 }

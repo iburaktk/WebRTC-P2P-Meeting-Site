@@ -72,8 +72,10 @@ export class ChatComponent implements OnInit {
             throw Error("chat-history element cannot found!");
           chatHistory.prepend(fileDialogBox);
         }
+        /*
         else
           console.log(textStr);
+          */
       } catch (error : any) {
         console.log(error.message);
       }

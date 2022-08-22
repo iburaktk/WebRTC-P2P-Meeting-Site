@@ -1,6 +1,6 @@
-import { SharedService } from './../shared-service.service';
 import { Component, OnInit, Output, EventEmitter, AfterViewInit } from '@angular/core';
 import { Peer } from 'peerjs';
+import { SharedService } from './../shared-service.service';
 import * as FileSaver from 'file-saver';
 
 @Component({
@@ -12,13 +12,13 @@ import * as FileSaver from 'file-saver';
 export class HostComponent implements AfterViewInit {
   private peer: Peer;
   peerId = "";
-  private lazyStream: any;
+  private myStream: any;
   private connChannel: any;
   private fileConnChannel : any;
   private currentFile : any;
   private fileName : string;
-  currentPeer: any;
   private peerList: Array<any> = [];
+  private peerConnectionList : Array<RTCPeerConnection> = [];
   mic : boolean;
   cam : boolean;
   screen : boolean;
@@ -57,8 +57,6 @@ export class HostComponent implements AfterViewInit {
     this.sideDisplay = "none";
     this.fileName = "";
 
-    this.toggleChat(); // sil
-
     _sharedService.changeEmitted$.subscribe(data => {
       try {
         let textStr = data as string;
@@ -73,9 +71,10 @@ export class HostComponent implements AfterViewInit {
           else if (textStr.startsWith("acceptFile")) {
             this.fileConnChannel?.send("acceptFile");
           }
+          /*
           else { // id, new, requestToSendFile
             console.log("??? ss else came: "+textStr);
-          }
+          }*/
         }
         else
           this.currentFile = data;
@@ -100,8 +99,8 @@ export class HostComponent implements AfterViewInit {
 
   public toggleMic() {
     this.mic = ! this.mic;
-    for (let index in this.lazyStream.getAudioTracks())
-      this.lazyStream.getAudioTracks()[index].enabled = this.mic;
+    for (let index in this.myStream.getAudioTracks())
+      this.myStream.getAudioTracks()[index].enabled = this.mic;
     if (!this.mic)
       this.micImagePath = "assets/MicOff.png";
     else
@@ -110,8 +109,8 @@ export class HostComponent implements AfterViewInit {
 
   public toggleCam() {
     this.cam = ! this.cam;
-    for (let index in this.lazyStream.getVideoTracks())
-      this.lazyStream.getVideoTracks()[index].enabled = this.cam;
+    for (let index in this.myStream.getVideoTracks())
+      this.myStream.getVideoTracks()[index].enabled = this.cam;
     if (!this.cam)
       this.camImagePath = "assets/CamOff.png";
     else
@@ -120,16 +119,10 @@ export class HostComponent implements AfterViewInit {
 
   public async toggleScreen() {
     this.screen = ! this.screen;
-    if (this.screen) {
-      this.screenImagePath = "assets/ScreenOn.png"; // cache al
-      this.screenImageColor = "rgba(80, 179, 63, 1)";
+    if (this.screen)
       this.shareScreen();
-    }
-    else {
-      this.screenImagePath = "assets/ScreenOff.png";
-      this.screenImageColor = "rgba(241, 20, 89, 1)";
+    else
       this.stopScreenShare();
-    }
   }
 
   public toggleChat() {
@@ -157,6 +150,57 @@ export class HostComponent implements AfterViewInit {
   private getPeerId = () => {
     this.peer.on('open', () => {
       this._sharedService.emitChange("id "+this.peerId);
+    });
+
+    this.peer.on('call', (call) => {
+      if (this.isFirst) {
+        navigator.mediaDevices.getUserMedia({
+          video: {
+            aspectRatio: 16/9
+          },
+          audio: true
+        }).then((stream) => {
+          this.myStream = stream;
+          const video = document.createElement('video');
+          video.style.setProperty("margin","5px");
+          video.classList.add('video');
+          video.autoplay = true;
+          video.srcObject = this.myStream;
+          video.id = "video-0";
+          video.className="videoElement";
+          video.play();
+          const videoElement = document.getElementById('remote-video') || null;
+          if (videoElement == null)
+            throw Error("Video html element cannot found!");
+          video.addEventListener("dblclick", () => {
+            video.requestFullscreen().catch((e) => console.log(e));
+          });
+          // @ts-ignore
+          video.disablePictureInPicture = true;
+          videoElement.append(video);
+          this.updateScreenPlacement(window.innerHeight);
+          this.isFirst = false;
+          call.answer(this.myStream);
+          call.on('stream', (remoteStream) => {
+            if (!this.peerList.includes(call.peer)) {
+              this.peerConnectionList.push(call.peerConnection);
+              this.peerList.push(call.peer);
+              this.streamRemoteVideo(remoteStream);
+            }
+          });
+        }).catch(err => {
+          console.log(err + 'Unable to get media');
+        });
+      } else {
+        call.answer(this.myStream);
+        call.on('stream', (remoteStream) => {
+          if (!this.peerList.includes(call.peer)) {
+            this.peerConnectionList.push(call.peerConnection);
+            this.peerList.push(call.peer);
+            this.streamRemoteVideo(remoteStream);
+          }
+        });
+      }
     });
 
     this.peer.on('connection', (conn) => {
@@ -200,49 +244,6 @@ export class HostComponent implements AfterViewInit {
       }
     })
 
-    this.peer.on('call', (call) => {
-      navigator.mediaDevices.getUserMedia({
-        video: {
-          aspectRatio: 16/9
-        },
-        audio: true
-      }).then((stream) => {
-        this.lazyStream = stream;
-        if (this.isFirst)
-        {
-          const video = document.createElement('video');
-          video.style.setProperty("margin","5px");
-          video.classList.add('video');
-          video.srcObject = this.lazyStream;
-          video.id = "video-0";
-          video.className="videoElement";
-          video.play();
-          const videoElement = document.getElementById('remote-video') || null;
-          if (videoElement == null)
-            throw Error("Video html element cannot found!");
-          video.addEventListener("dblclick", () => {
-            video.requestFullscreen().catch((e) => console.log(e));
-          });
-          // @ts-ignore
-          video.disablePictureInPicture = true;
-          videoElement.append(video);
-          this.isFirst = false;
-        }
-        call.answer(stream);
-        call.on('stream', (remoteStream) => {
-          if (!this.peerList.includes(call.peer)) {
-            this.currentPeer = call.peerConnection;
-            this.peerList.push(call.peer);
-            this.streamRemoteVideo(remoteStream);
-          }
-        });
-      }).catch(err => {
-        console.log(err + 'Unable to get media');
-      });
-
-    });
-
-
   }
 
   /*
@@ -273,7 +274,6 @@ export class HostComponent implements AfterViewInit {
   public updateScreenPlacement(windowHeight : number) {
     this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
     windowHeight *= 1.1;
-    //console.log("h: "+windowHeight+" h*1.77: "+windowHeight*1.77+" w: "+this.videoWidth +" wiw: "+window.innerWidth);
     let count = this.peerList.length;
     let newHeight = 0;
     switch (count) {
@@ -336,13 +336,22 @@ export class HostComponent implements AfterViewInit {
     navigator.mediaDevices.getDisplayMedia().then(stream => {
       const videoTrack = stream.getVideoTracks()[0];
       videoTrack.onended = () => {
-        this.screenImagePath = "assets/ScreenOff.png";
-        this.screenImageColor = "rgba(241, 20, 89, 1)";
-        this.stopScreenShare();
+        if (this.screen)
+          this.toggleScreen();
       };
+      this.peerConnectionList.forEach( (peer) => {
+        // @ts-ignore
+        const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
+        // @ts-ignore
+        sender.replaceTrack(videoTrack);
+      });
+
+      const videoElement = document.getElementById('video-0') || null;
       // @ts-ignore
-      const sender = this.currentPeer.getSenders().find(s => s.track.kind === videoTrack.kind);
-      sender.replaceTrack(videoTrack);
+      videoElement.srcObject = new MediaStream([videoTrack]);
+
+      this.screenImagePath = "assets/ScreenOn.png"; // cache al
+      this.screenImageColor = "rgba(80, 179, 63, 1)";
       // @ts-ignore
     }).catch(err => {
       console.log('Unable to get display media ' + err);
@@ -350,10 +359,22 @@ export class HostComponent implements AfterViewInit {
   }
 
   private stopScreenShare(): void {
-    const videoTrack = this.lazyStream.getVideoTracks()[0];
-    // @ts-ignore
-    const sender = this.currentPeer.getSenders().find(s => s.track.kind === videoTrack.kind);
-    sender.replaceTrack(videoTrack);
+    this.screenImagePath = "assets/ScreenOff.png";
+    this.screenImageColor = "rgba(241, 20, 89, 1)";
+
+    const videoTrack = this.myStream.getVideoTracks()[0];
+    this.peerConnectionList.forEach( (peer) => {
+      // @ts-ignore
+      const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
+      sender?.track?.stop();
+      sender?.track?.dispatchEvent(new Event("ended"));
+      // @ts-ignore
+      sender.replaceTrack(videoTrack);
+    });
+
+    const videoElement = document.getElementById('video-0') || null;
+      // @ts-ignore
+      videoElement.srcObject = new MediaStream([videoTrack]);
   }
 
 }
