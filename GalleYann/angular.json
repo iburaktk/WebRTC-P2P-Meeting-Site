@@ -29,7 +29,8 @@
               "rxjs",
               "peerjs-js-binarypack",
               "sdp",
-              "rtcpeerconnection-shim"
+              "rtcpeerconnection-shim",
+              "file-saver"
             ]
           },
           "configurations": {

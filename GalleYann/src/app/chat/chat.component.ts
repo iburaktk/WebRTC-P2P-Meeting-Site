@@ -1,5 +1,6 @@
 import { ViewEncapsulation } from '@angular/core';
 import { Component, OnInit } from '@angular/core';
+import { MessageBlock } from '../app.component';
 import { SharedService } from '../shared-service.service';
 
 
@@ -24,53 +25,54 @@ export class ChatComponent implements OnInit {
       let textStr;
       try {
         textStr = text as string;
-        if (typeof textStr != 'string') throw new Error("Not a string, maybe a file?")
-        if (textStr?.startsWith("new")) {
-          textStr = textStr.substring(4);
-          this.messages.unshift(new MessageBlock(textStr, "Guest", false));
-        }
-        else if (textStr?.startsWith("requestToSendFile")) {
-          var fileDialogBox = document.getElementById('file-download-dialog') || null;
-          if (fileDialogBox == null) {
-            this.filename = textStr.substring(17);
-            console.log("preparing dialog");
-            fileDialogBox = document.createElement('div');
-            fileDialogBox.classList.add('chat-message');
-            fileDialogBox.classList.add('chat-message-received');
-            fileDialogBox.style.setProperty("margin","5px 15px 10px 15px")
-            fileDialogBox.id = "file-download-dialog";
+        if (typeof textStr == 'string') {
+          if (textStr?.startsWith("new")) {
+            textStr = textStr.substring(4);
+            this.messages.unshift(new MessageBlock(textStr, "Guest", false));
+          }
+          else if (textStr?.startsWith("requestToSendFile")) {
+            var fileDialogBox = document.getElementById('file-download-dialog') || null;
+            if (fileDialogBox == null) {
+              this.filename = textStr.substring(17);
+              console.log("preparing dialog");
+              fileDialogBox = document.createElement('div');
+              fileDialogBox.classList.add('chat-message');
+              fileDialogBox.classList.add('chat-message-received');
+              fileDialogBox.style.setProperty("margin","5px 15px 10px 15px")
+              fileDialogBox.id = "file-download-dialog";
 
-            const fileNameBox = document.createElement("div");
-            fileNameBox.className = "file-name-text";
-            fileNameBox.textContent = this.filename;
-            const acceptButton = document.createElement('button');
-            acceptButton.className = "file-box-button";
-            acceptButton.textContent = "Accept";
-            acceptButton.onclick = (e)=>{
-              this.acceptFile();
-              fileDialogBox?.remove();
-            };
-            const rejectButton = document.createElement('button');
-            rejectButton.className = "file-box-button";
-            rejectButton.textContent = "Reject";
-            rejectButton.onclick = (e)=>{
-              fileDialogBox?.remove();
-            };
-            fileDialogBox.append(fileNameBox);
-            fileDialogBox.append(rejectButton);
-            fileDialogBox.append(acceptButton);
+              const fileNameBox = document.createElement("div");
+              fileNameBox.className = "file-name-text";
+              fileNameBox.textContent = this.filename;
+              const acceptButton = document.createElement('button');
+              acceptButton.className = "file-box-button";
+              acceptButton.textContent = "Accept";
+              acceptButton.onclick = (e)=>{
+                this.acceptFile();
+                fileDialogBox?.remove();
+              };
+              const rejectButton = document.createElement('button');
+              rejectButton.className = "file-box-button";
+              rejectButton.textContent = "Reject";
+              rejectButton.onclick = (e)=>{
+                fileDialogBox?.remove();
+              };
+              fileDialogBox.append(fileNameBox);
+              fileDialogBox.append(rejectButton);
+              fileDialogBox.append(acceptButton);
+              const chatHistory = document.getElementById('chat-history') || null;
+              if (chatHistory == null)
+                throw Error("chat-history element cannot found!");
+              chatHistory.prepend(fileDialogBox);
+            }
+            else {
+
+            }
             const chatHistory = document.getElementById('chat-history') || null;
             if (chatHistory == null)
               throw Error("chat-history element cannot found!");
             chatHistory.prepend(fileDialogBox);
           }
-          else {
-
-          }
-          const chatHistory = document.getElementById('chat-history') || null;
-          if (chatHistory == null)
-            throw Error("chat-history element cannot found!");
-          chatHistory.prepend(fileDialogBox);
         }
         /*
         else
@@ -110,7 +112,6 @@ export class ChatComponent implements OnInit {
   }
 
   public acceptFile() {
-    console.log("button clicked");
     this._sharedService.emitChange("acceptFile");
   }
 
@@ -150,19 +151,5 @@ export class ChatComponent implements OnInit {
       if (handled)
         event.preventDefault();
     })
-  }
-}
-
-class MessageBlock {
-  text : string;
-  isSent : boolean;
-  from : string;
-  date : any;
-
-  constructor( text : string, from : string, isSent : boolean) {
-    this.text = text;
-    this.isSent = isSent;
-    this.from = from;
-    this.date = new Date().getTime();
   }
 }

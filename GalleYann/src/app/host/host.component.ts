@@ -1,5 +1,6 @@
+import { ModelService } from './../model-service.service';
 import { Component, OnInit, Output, EventEmitter, AfterViewInit } from '@angular/core';
-import { Peer } from 'peerjs';
+import { Peer, DataConnection } from 'peerjs';
 import { SharedService } from './../shared-service.service';
 import * as FileSaver from 'file-saver';
 
@@ -10,11 +11,14 @@ import * as FileSaver from 'file-saver';
 })
 
 export class HostComponent implements AfterViewInit {
+
+  //#region Declarations
+
   private peer: Peer;
   peerId = "";
   private myStream: any;
-  private connChannel: any;
-  private fileConnChannel : any;
+  private connChannelMap = new Map<string, DataConnection>();
+  private fileConnChannelMap = new Map<string, DataConnection>();
   private currentFile : any;
   private fileName : string;
   private peerList: Array<any> = [];
@@ -34,8 +38,14 @@ export class HostComponent implements AfterViewInit {
   sideScreenWidth : number;
   sideDisplay : string;
 
+  name : string;
 
-  constructor(private _sharedService : SharedService) {
+  //#endregion Declarations
+
+  constructor(private _sharedService : SharedService, private _modelService : ModelService) {
+
+    //#region Initial Values
+
     for (let i=0;i<6;i++){
       let j = Math.floor(Math.random()*10);
       this.peerId += j.toString();
@@ -57,24 +67,24 @@ export class HostComponent implements AfterViewInit {
     this.sideDisplay = "none";
     this.fileName = "";
 
+    this.name = _modelService.name;
+
+    //#endregion Initial Values
+
     _sharedService.changeEmitted$.subscribe(data => {
       try {
         let textStr = data as string;
         if (typeof textStr == 'string') {
           if (textStr.startsWith("message")) {
             textStr = textStr.substring(8);
-            this.connChannel.send(textStr);
+            this.sendMessage(textStr);
           }
           else if (textStr.startsWith("file")) {
-            this.fileConnChannel?.send("name "+textStr.substring(5));
+            this.sendFileMessage("name "+textStr.substring(5));
           }
           else if (textStr.startsWith("acceptFile")) {
-            this.fileConnChannel?.send("acceptFile");
+            this.sendFileMessage("acceptFile");
           }
-          /*
-          else { // id, new, requestToSendFile
-            console.log("??? ss else came: "+textStr);
-          }*/
         }
         else
           this.currentFile = data;
@@ -117,7 +127,7 @@ export class HostComponent implements AfterViewInit {
       this.camImagePath = "assets/CamOn.png";
   }
 
-  public async toggleScreen() {
+  public toggleScreen() {
     this.screen = ! this.screen;
     if (this.screen)
       this.shareScreen();
@@ -144,7 +154,37 @@ export class HostComponent implements AfterViewInit {
   }
 
   public sendMessage(message : string) {
-    this.connChannel.send(message);
+    this.peerList.forEach(peer => {
+      this.connChannelMap.get(peer)?.send(message);
+    });
+  }
+
+  public sendFileMessage(message : any) {
+    this.peerList.forEach(peer => {
+      this.fileConnChannelMap.get(peer)?.send(message);
+    });
+  }
+
+  public createHtmlVideo(stream : any) {
+    const video = document.createElement('video');
+    video.style.setProperty("margin","5px");
+    video.classList.add('video');
+    video.autoplay = true;
+    video.muted = this.peerList.length == 0 ? true : false;
+    video.srcObject = stream;
+    video.id = "video-"+this.peerList.length;
+    video.className="videoElement";
+    video.play();
+    const videoElement = document.getElementById('remote-video') || null;
+    if (videoElement == null)
+      throw Error("Video html element cannot found!");
+    video.addEventListener("dblclick", () => {
+      video.requestFullscreen().catch((e) => console.log(e));
+    });
+    // @ts-ignore
+    video.disablePictureInPicture = true;
+    videoElement.append(video);
+    this.updateScreenPlacement(window.innerHeight);
   }
 
   private getPeerId = () => {
@@ -152,70 +192,40 @@ export class HostComponent implements AfterViewInit {
       this._sharedService.emitChange("id "+this.peerId);
     });
 
-    this.peer.on('call', (call) => {
+    this.peer.on('call', async (call) => {
       if (this.isFirst) {
-        navigator.mediaDevices.getUserMedia({
+        await navigator.mediaDevices.getUserMedia({
           video: {
             aspectRatio: 16/9
           },
           audio: true
         }).then((stream) => {
           this.myStream = stream;
-          const video = document.createElement('video');
-          video.style.setProperty("margin","5px");
-          video.classList.add('video');
-          video.autoplay = true;
-          video.srcObject = this.myStream;
-          video.id = "video-0";
-          video.className="videoElement";
-          video.play();
-          const videoElement = document.getElementById('remote-video') || null;
-          if (videoElement == null)
-            throw Error("Video html element cannot found!");
-          video.addEventListener("dblclick", () => {
-            video.requestFullscreen().catch((e) => console.log(e));
-          });
-          // @ts-ignore
-          video.disablePictureInPicture = true;
-          videoElement.append(video);
-          this.updateScreenPlacement(window.innerHeight);
+          this.createHtmlVideo(this.myStream);
           this.isFirst = false;
-          call.answer(this.myStream);
-          call.on('stream', (remoteStream) => {
-            if (!this.peerList.includes(call.peer)) {
-              this.peerConnectionList.push(call.peerConnection);
-              this.peerList.push(call.peer);
-              this.streamRemoteVideo(remoteStream);
-            }
-          });
         }).catch(err => {
           console.log(err + 'Unable to get media');
         });
-      } else {
-        call.answer(this.myStream);
-        call.on('stream', (remoteStream) => {
-          if (!this.peerList.includes(call.peer)) {
-            this.peerConnectionList.push(call.peerConnection);
-            this.peerList.push(call.peer);
-            this.streamRemoteVideo(remoteStream);
-          }
-        });
       }
+      call.answer(this.myStream);
+      call.on('stream', (remoteStream) => {
+        if (!this.peerList.includes(call.peer)) {
+          this.peerConnectionList.push(call.peerConnection);
+          this.peerList.push(call.peer);
+          this.createHtmlVideo(remoteStream);
+        }
+      });
     });
 
     this.peer.on('connection', (conn) => {
       if (conn.label == "message") {
-        this.connChannel = conn;
+        this.connChannelMap.set(conn.peer,conn);
         conn.on("data", (data) => {
-          console.log(data);
           this._sharedService.emitChange("new "+data);
-        });
-        conn.on("open", () => {
-          // do something
         });
       }
       else if (conn.label == "ftp") {
-        this.fileConnChannel = conn;
+        this.fileConnChannelMap.set(conn.peer,conn);
         conn.on('data', (data) => {
           try {
             let textStr = data as string;
@@ -225,7 +235,10 @@ export class HostComponent implements AfterViewInit {
                 this._sharedService.emitChange("requestToSendFile "+this.fileName);
               }
               else if (textStr.startsWith("acceptFile")) {
-                this.fileConnChannel.send(this.currentFile);
+                conn.send(this.currentFile);
+              }
+              else if (textStr.startsWith("list")) {
+                conn.send("list "+this.peerList.toString());
               }
             }
             else {
@@ -243,32 +256,6 @@ export class HostComponent implements AfterViewInit {
         });
       }
     })
-
-  }
-
-  /*
-    response to connectToPeer -> give peer list to them
-    make them call you
-  */
-
-  private streamRemoteVideo(remoteStream: any): void {
-    const video = document.createElement('video');
-    video.style.setProperty("margin","5px");
-    video.classList.add('video');
-    video.srcObject = remoteStream;
-    video.className="videoElement";
-    video.id = "video-"+this.peerList.length;
-    video.play();
-    const videoElement = document.getElementById('remote-video') || null;
-    if (videoElement == null)
-      throw Error("Video html element cannot found!");
-    video.addEventListener("dblclick", () => {
-      video.requestFullscreen().catch((e) => console.log(e));
-    });
-    // @ts-ignore
-    video.disablePictureInPicture = true;
-    videoElement.append(video);
-    this.updateScreenPlacement(window.innerHeight);
   }
 
   public updateScreenPlacement(windowHeight : number) {

@@ -57,3 +57,17 @@ export class AppComponent {
     }
   }
 }
+
+export class MessageBlock {
+  text : string;
+  isSent : boolean;
+  from : string;
+  date : any;
+
+  constructor( text : string, from : string, isSent : boolean) {
+    this.text = text;
+    this.isSent = isSent;
+    this.from = from;
+    this.date = new Date().getTime();
+  }
+}
