@@ -3,6 +3,7 @@ import { Component, OnInit, Output, EventEmitter, AfterViewInit } from '@angular
 import { Peer, DataConnection } from 'peerjs';
 import { SharedService } from './../shared-service.service';
 import * as FileSaver from 'file-saver';
+import { MessageBlock } from '../app.component';
 
 @Component({
   selector: 'app-host',
@@ -75,19 +76,25 @@ export class HostComponent implements AfterViewInit {
       try {
         let textStr = data as string;
         if (typeof textStr == 'string') {
-          if (textStr.startsWith("message")) {
-            textStr = textStr.substring(8);
-            this.sendMessage(textStr);
-          }
-          else if (textStr.startsWith("file")) {
+          if (textStr.startsWith("file")) {
             this.sendFileMessage("name "+textStr.substring(5));
           }
           else if (textStr.startsWith("acceptFile")) {
             this.sendFileMessage("acceptFile");
           }
         }
-        else
-          this.currentFile = data;
+        else {
+          let message = data as MessageBlock;
+          if (message instanceof MessageBlock && message.from == "Me") {
+            console.log("?");
+            let myMessage = message.clone();
+            myMessage.isSent = false;
+            myMessage.from = this.name;
+            this.sendMessage(myMessage);
+          }
+          else
+            this.currentFile = data;
+        }
       } catch (ex) {
         console.log(ex);
       }
@@ -153,7 +160,7 @@ export class HostComponent implements AfterViewInit {
 
   }
 
-  public sendMessage(message : string) {
+  public sendMessage(message : any) {
     this.peerList.forEach(peer => {
       this.connChannelMap.get(peer)?.send(message);
     });
@@ -221,7 +228,8 @@ export class HostComponent implements AfterViewInit {
       if (conn.label == "message") {
         this.connChannelMap.set(conn.peer,conn);
         conn.on("data", (data) => {
-          this._sharedService.emitChange("new "+data);
+          let message = new MessageBlock(data as MessageBlock);
+          this._sharedService.emitChange(message);
         });
       }
       else if (conn.label == "ftp") {

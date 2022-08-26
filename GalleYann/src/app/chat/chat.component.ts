@@ -21,16 +21,12 @@ export class ChatComponent implements OnInit {
     this.messageText = "";
     this.filename = "";
 
-    _sharedService.changeEmitted$.subscribe(text => {
+    _sharedService.changeEmitted$.subscribe(data => {
       let textStr;
       try {
-        textStr = text as string;
+        textStr = data as string;
         if (typeof textStr == 'string') {
-          if (textStr?.startsWith("new")) {
-            textStr = textStr.substring(4);
-            this.messages.unshift(new MessageBlock(textStr, "Guest", false));
-          }
-          else if (textStr?.startsWith("requestToSendFile")) {
+          if (textStr?.startsWith("requestToSendFile")) {
             var fileDialogBox = document.getElementById('file-download-dialog') || null;
             if (fileDialogBox == null) {
               this.filename = textStr.substring(17);
@@ -48,7 +44,7 @@ export class ChatComponent implements OnInit {
               acceptButton.className = "file-box-button";
               acceptButton.textContent = "Accept";
               acceptButton.onclick = (e)=>{
-                this.acceptFile();
+                this._sharedService.emitChange("acceptFile");
                 fileDialogBox?.remove();
               };
               const rejectButton = document.createElement('button');
@@ -65,19 +61,17 @@ export class ChatComponent implements OnInit {
                 throw Error("chat-history element cannot found!");
               chatHistory.prepend(fileDialogBox);
             }
-            else {
-
-            }
-            const chatHistory = document.getElementById('chat-history') || null;
-            if (chatHistory == null)
-              throw Error("chat-history element cannot found!");
-            chatHistory.prepend(fileDialogBox);
+          }
+          else
+            console.log("text: "+textStr);
+        }
+        else {
+          let message = data as MessageBlock;
+          if (message instanceof MessageBlock) {
+            if (!message.isSent)
+              this.messages.unshift(message);
           }
         }
-        /*
-        else
-          console.log(textStr);
-          */
       } catch (error : any) {
         console.log(error.message);
       }
@@ -89,8 +83,7 @@ export class ChatComponent implements OnInit {
     this.messageEnterKeySet();
   }
 
-  public uploadFile()
-  {
+  public uploadFile() {
     var input = document.createElement('input');
     input.type = 'file';
 
@@ -111,16 +104,13 @@ export class ChatComponent implements OnInit {
     input.click();
   }
 
-  public acceptFile() {
-    this._sharedService.emitChange("acceptFile");
-  }
-
   public sendMessage() {
     if (this.messageText == "")
       return;
-    this._sharedService.emitChange("message "+this.messageText);
-    this.messages.unshift(new MessageBlock(this.messageText, "Host",true));
+    let message = new MessageBlock(this.messageText, "Me", true);
     this.messageText = "";
+    this.messages.unshift(message);
+    this._sharedService.emitChange(message);
   }
 
   private messageEnterKeySet() {

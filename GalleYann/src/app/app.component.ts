@@ -14,16 +14,17 @@ export class AppComponent {
     _sharedService.changeEmitted$.subscribe(data => {
       try {
         let textStr = data as string;
-        if (typeof textStr != 'string') throw new Error("Not a string, maybe a file?")
-        const region = document.getElementById('peerRegion') || null;
-        if (textStr.startsWith("id")) {
-          textStr = textStr.substring(3);
-          this.peerIdText = textStr;
-          region?.style.setProperty("display", "inline-flex");
+        if (typeof textStr == 'string') {
+          const region = document.getElementById('peerRegion') || null;
+          if (textStr.startsWith("id")) {
+            textStr = textStr.substring(3);
+            this.peerIdText = textStr;
+            region?.style.setProperty("display", "inline-flex");
+          }
+          else if (textStr == "hide")
+            region?.style.setProperty("display", "none");
+          //else console.log(text);
         }
-        else if (textStr == "hide")
-          region?.style.setProperty("display", "none");
-        //else console.log(text);
       } catch (error : any) {
         console.log(error.message);
       }
@@ -59,15 +60,33 @@ export class AppComponent {
 }
 
 export class MessageBlock {
-  text : string;
-  isSent : boolean;
-  from : string;
+  text! : string;
+  isSent! : boolean;
+  from! : string;
   date : any;
 
-  constructor( text : string, from : string, isSent : boolean) {
-    this.text = text;
-    this.isSent = isSent;
-    this.from = from;
-    this.date = new Date().getTime();
+  constructor( source : MessageBlock );
+  constructor( text : string, from : string, isSent : boolean);
+
+  constructor(...myArray : any[]) {
+    if (myArray.length == 3) {
+      this.text = myArray[0];
+      this.from = myArray[1];
+      this.isSent = myArray[2];
+      this.date = new Date().getTime();
+    }
+    if (myArray.length == 1) {
+      let source = myArray[0] as MessageBlock;
+      this.text = source.text;
+      this.isSent = source.isSent;
+      this.from = source.from;
+      this.date = source.date;
+    }
+  }
+
+  public clone() : MessageBlock {
+    let myClone = new MessageBlock(this.text, this.from, this.isSent);
+    myClone.date = this.date;
+    return myClone;
   }
 }
