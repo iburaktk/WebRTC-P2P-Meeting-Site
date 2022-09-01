@@ -84,12 +84,12 @@ export class ChatComponent implements OnInit {
 	}
 
 	public uploadFile() {
-		var input = document.createElement('input');
+		var input = document.createElement('input') as HTMLInputElement;
 		input.type = 'file';
 
 		input.onchange = (e) => {
-			// @ts-ignore
-			this.file = e.target.files[0];
+      let myTarget = e.target as HTMLInputElement;
+			this.file = myTarget.files?[0] : File;
 
 			if (this.file == null || this.file == undefined)
 				throw new Error("Empty file!");

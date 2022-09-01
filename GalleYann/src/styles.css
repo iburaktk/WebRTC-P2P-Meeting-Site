@@ -4,3 +4,8 @@ html, body {
   height: 100%;
   margin: 0px;
 }
+
+body {
+  min-width: 750px;
+  min-height: 400px;
+}

@@ -248,12 +248,12 @@ export class ClientComponent implements AfterViewInit {
 				let message = new MessageBlock(data as MessageBlock);
 					this._sharedService.emitChange(message);
 				});
-        conn.on("close", () => {
-          this.connChannelMap.delete(conn.peer);
-          if (conn.open)
-            conn.close();
-          console.log(conn.peer+": Message Channel closed!");
-        });
+				conn.on("close", () => {
+					this.connChannelMap.delete(conn.peer);
+					if (conn.open)
+						conn.close();
+					console.log(conn.peer+": Message Channel closed!");
+				});
 			}
 			else if (conn.label == "ftp") {
 				this.fileConnChannelMap.set(conn.peer,conn);
@@ -282,25 +282,26 @@ export class ClientComponent implements AfterViewInit {
 				conn.on("open", () => {
 					// do something
 				});
-        conn.on("close", () => {
-          this.fileConnChannelMap.delete(conn.peer);
-          if (conn.open)
-            conn.close();
-          console.log(conn.peer+": File Channel closed!");
-          // Remove vid
-          this.peerList.splice(this.peerList.indexOf(conn.peer),1);
-          let videoElement = document.getElementById('video-'+conn.peer) || null;
-          videoElement?.remove();
-          this.updateScreenPlacement(window.innerHeight);
-          console.log(conn.peer+": Media Connection closed!");
-        });
+				conn.on("close", () => {
+					this.fileConnChannelMap.delete(conn.peer);
+					if (conn.open)
+						conn.close();
+					console.log(conn.peer+": File Channel closed!");
+					// Remove vid
+					this.peerList.splice(this.peerList.indexOf(conn.peer),1);
+					let videoElement = document.getElementById('video-'+conn.peer) || null;
+					videoElement?.remove();
+					this.updateScreenPlacement(window.innerHeight);
+					console.log(conn.peer+": Media Connection closed!");
+				});
 			}
 		});
 	}
 
 	async connectWithPeer(targetPeer : string): Promise<void> {
 		if (targetPeer == "")
-			throw new Error("Room ID cannot be empty!")
+			throw new Error("Room ID cannot be empty!");
+		await new Promise(r => setTimeout(r,1000));
 		await this.callPeer(targetPeer);
 		await new Promise(r => setTimeout(r,1000));
 		this.connectMessageChannel(targetPeer);
@@ -381,8 +382,8 @@ export class ClientComponent implements AfterViewInit {
 				audio: true
 			}).then((stream) => {
 				this.myStream = stream;
-        while (this.peerId == "")
-          continue;
+				while (this.peerId == "")
+					continue;
 				this.createHtmlVideo(this.myStream, this.peerId);
 				this.isFirst = false;
 			}).catch(err => {
@@ -407,28 +408,55 @@ export class ClientComponent implements AfterViewInit {
 
 	public updateScreenPlacement(windowHeight : number) {
 		this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
-		windowHeight *= 1.1;
 		let count = this.peerList.length;
 		let newHeight = 0;
+		windowHeight = windowHeight * 0.88;
 		switch (count) {
 			case 0:
 				this.gridTemplateColumns = "1fr";
-				newHeight = windowHeight / 1.1;
-				if (newHeight * 1.77 > this.videoWidth/1.5)
-					newHeight = this.videoWidth/1.5/1.8;
+				newHeight = windowHeight;
+				if (newHeight * 1.77 > this.videoWidth)
+					newHeight = this.videoWidth/1.8;
 				break;
 			case 1:
-				this.gridTemplateColumns = "1fr 1fr";
-				newHeight = windowHeight / 2;
-				if (newHeight * 1.77 > this.videoWidth/2)
-					newHeight = this.videoWidth/2/1.8;
+				if (windowHeight/2*1.77 > this.videoWidth/2) {
+					this.gridTemplateColumns = "1fr";
+					newHeight = windowHeight / 2.05;
+				}
+				else {
+					this.gridTemplateColumns = "1fr 1fr";
+					newHeight = windowHeight / 1.6;
+					if (newHeight * 1.77 > this.videoWidth/2)
+						newHeight = this.videoWidth/2/1.85  ;
+				}
 				break;
 			case 2:
+				if (windowHeight/3*1.77 > this.videoWidth/2) {
+					this.gridTemplateColumns = "1fr";
+					newHeight = windowHeight / 3.1;
+				}
+				else if (windowHeight/2*1.77 < this.videoWidth/3) {
+					this.gridTemplateColumns = "1fr 1fr 1fr";
+					newHeight = this.videoWidth/3/1.8;
+				}
+				else {
+					this.gridTemplateColumns = "1fr 1fr";
+					newHeight = windowHeight / 2.05;
+					if (newHeight * 1.77 > this.videoWidth/2)
+						newHeight = this.videoWidth/2/1.8;
+				}
+				break;
 			case 3:
-				this.gridTemplateColumns = "1fr 1fr";
-				newHeight = windowHeight / 3;
-				if (newHeight * 1.77 > this.videoWidth/2)
-					newHeight = this.videoWidth/2/1.8;
+				if (windowHeight/4*1.77 > this.videoWidth/2) {
+					this.gridTemplateColumns = "1fr";
+					newHeight = windowHeight / 4.15;
+				}
+				else {
+					this.gridTemplateColumns = "1fr 1fr";
+					newHeight = windowHeight / 2.1;
+					if (newHeight * 1.77 > this.videoWidth/2)
+						newHeight = this.videoWidth/2/1.8;
+				}
 				break;
 			case 4:
 			case 5:
@@ -485,20 +513,16 @@ export class ClientComponent implements AfterViewInit {
 					this.toggleScreen();
 			};
 			this.peerConnectionList.forEach( (peer) => {
-				// @ts-ignore
-				const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
-				// @ts-ignore
-				sender.replaceTrack(videoTrack);
+				const sender = peer.getSenders().find(s => s.track?.kind === videoTrack.kind);
+				sender?.replaceTrack(videoTrack);
 			});
 
-			const videoElement = document.getElementById('video-0') || null;
-			// @ts-ignore
+			const videoElement = (document.getElementById('video-'+this.peerId) || null) as HTMLMediaElement;
 			videoElement.srcObject = new MediaStream([videoTrack]);
 
 			this.screenImagePath = "assets/ScreenOn.png"; // cache al
 			this.screenImageColor = "rgba(80, 179, 63, 1)";
-			// @ts-ignore
-		}).catch(err => {
+		}).catch((err : Error) => {
 			console.log('Unable to get display media ' + err);
 		});
 	}
@@ -509,16 +533,13 @@ export class ClientComponent implements AfterViewInit {
 
 		const videoTrack = this.myStream.getVideoTracks()[0];
 		this.peerConnectionList.forEach( (peer) => {
-			// @ts-ignore
-			const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
+			const sender = peer.getSenders().find(s => s.track?.kind === videoTrack.kind);
 			sender?.track?.stop();
 			sender?.track?.dispatchEvent(new Event("ended"));
-			// @ts-ignore
-			sender.replaceTrack(videoTrack);
+			sender?.replaceTrack(videoTrack);
 		});
 
-		const videoElement = document.getElementById('video-0') || null;
-			// @ts-ignore
+		const videoElement = (document.getElementById('video-'+this.peerId) || null) as HTMLMediaElement;
 			videoElement.srcObject = new MediaStream([videoTrack]);
 	}
 }

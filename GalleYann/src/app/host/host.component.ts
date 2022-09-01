@@ -61,7 +61,7 @@ export class HostComponent implements AfterViewInit {
 		this.camImagePath = "assets/CamOn.png";
 		this.screenImagePath = "assets/ScreenOff.png";
 		this.screenImageColor = "rgb(241, 20, 89)";
-		this.gridTemplateColumns = "1fr 1fr";
+		this.gridTemplateColumns = "1fr";
 		this.sideScreenWidth = 0;
 		this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
 		this.isChatScreenOpen = false;
@@ -311,28 +311,55 @@ export class HostComponent implements AfterViewInit {
 
 	public updateScreenPlacement(windowHeight : number) {
 		this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
-		windowHeight *= 1.1;
 		let count = this.peerList.length;
 		let newHeight = 0;
+    windowHeight = windowHeight * 0.88;
 		switch (count) {
 			case 0:
 				this.gridTemplateColumns = "1fr";
-				newHeight = windowHeight / 1.1;
-				if (newHeight * 1.77 > this.videoWidth/1.5)
-					newHeight = this.videoWidth/1.5/1.8;
+				newHeight = windowHeight;
+				if (newHeight * 1.77 > this.videoWidth)
+					newHeight = this.videoWidth/1.8;
 				break;
 			case 1:
-				this.gridTemplateColumns = "1fr 1fr";
-				newHeight = windowHeight / 2;
-				if (newHeight * 1.77 > this.videoWidth/2)
-					newHeight = this.videoWidth/2/1.8;
+        if (windowHeight/2*1.77 > this.videoWidth/2) {
+          this.gridTemplateColumns = "1fr";
+          newHeight = windowHeight / 2.05;
+        }
+        else {
+          this.gridTemplateColumns = "1fr 1fr";
+          newHeight = windowHeight / 1.6;
+          if (newHeight * 1.77 > this.videoWidth/2)
+            newHeight = this.videoWidth/2/1.85;
+        }
 				break;
 			case 2:
+        if (windowHeight/3*1.77 > this.videoWidth/2) {
+          this.gridTemplateColumns = "1fr";
+          newHeight = windowHeight / 3.1;
+        }
+        else if (windowHeight/2*1.77 < this.videoWidth/3) {
+          this.gridTemplateColumns = "1fr 1fr 1fr";
+          newHeight = this.videoWidth/3/1.8;
+        }
+        else {
+          this.gridTemplateColumns = "1fr 1fr";
+          newHeight = windowHeight / 2.05;
+          if (newHeight * 1.77 > this.videoWidth/2)
+            newHeight = this.videoWidth/2/1.8;
+        }
+        break;
 			case 3:
-				this.gridTemplateColumns = "1fr 1fr";
-				newHeight = windowHeight / 3;
-				if (newHeight * 1.77 > this.videoWidth/2)
-					newHeight = this.videoWidth/2/1.8;
+        if (windowHeight/4*1.77 > this.videoWidth/2) {
+          this.gridTemplateColumns = "1fr";
+          newHeight = windowHeight / 4.15;
+        }
+        else {
+          this.gridTemplateColumns = "1fr 1fr";
+          newHeight = windowHeight / 2.1;
+          if (newHeight * 1.77 > this.videoWidth/2)
+            newHeight = this.videoWidth/2/1.8;
+        }
 				break;
 			case 4:
 			case 5:
@@ -381,28 +408,24 @@ export class HostComponent implements AfterViewInit {
 	}
 
 	private shareScreen(): void {
-		// @ts-ignore
-		navigator.mediaDevices.getDisplayMedia().then(stream => {
+    // @ts-ignore
+		navigator.mediaDevices.getDisplayMedia().then((stream : MediaStream) => {
 			const videoTrack = stream.getVideoTracks()[0];
 			videoTrack.onended = () => {
 				if (this.screen)
 					this.toggleScreen();
 			};
 			this.peerConnectionList.forEach( (peer) => {
-				// @ts-ignore
-				const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
-				// @ts-ignore
-				sender.replaceTrack(videoTrack);
+				const sender = peer.getSenders().find(s => s.track?.kind === videoTrack.kind);
+				sender?.replaceTrack(videoTrack);
 			});
 
-			const videoElement = document.getElementById('video-0') || null;
-			// @ts-ignore
+			const videoElement = (document.getElementById('video-'+this.peerId) || null) as HTMLMediaElement;
 			videoElement.srcObject = new MediaStream([videoTrack]);
 
 			this.screenImagePath = "assets/ScreenOn.png"; // cache al
 			this.screenImageColor = "rgba(80, 179, 63, 1)";
-			// @ts-ignore
-		}).catch(err => {
+		}).catch((err : Error) => {
 			console.log('Unable to get display media ' + err);
 		});
 	}
@@ -413,16 +436,13 @@ export class HostComponent implements AfterViewInit {
 
 		const videoTrack = this.myStream.getVideoTracks()[0];
 		this.peerConnectionList.forEach( (peer) => {
-			// @ts-ignore
-			const sender = peer.getSenders().find(s => s.track.kind === videoTrack.kind);
+			const sender = peer.getSenders().find(s => s.track?.kind === videoTrack.kind);
 			sender?.track?.stop();
 			sender?.track?.dispatchEvent(new Event("ended"));
-			// @ts-ignore
-			sender.replaceTrack(videoTrack);
+			sender?.replaceTrack(videoTrack);
 		});
 
-		const videoElement = document.getElementById('video-0') || null;
-			// @ts-ignore
+		const videoElement = (document.getElementById('video-'+this.peerId) || null) as HTMLMediaElement;
 			videoElement.srcObject = new MediaStream([videoTrack]);
 	}
 }
