@@ -248,6 +248,12 @@ export class ClientComponent implements AfterViewInit {
 				let message = new MessageBlock(data as MessageBlock);
 					this._sharedService.emitChange(message);
 				});
+        conn.on("close", () => {
+          this.connChannelMap.delete(conn.peer);
+          if (conn.open)
+            conn.close();
+          console.log(conn.peer+": Message Channel closed!");
+        });
 			}
 			else if (conn.label == "ftp") {
 				this.fileConnChannelMap.set(conn.peer,conn);
@@ -276,6 +282,18 @@ export class ClientComponent implements AfterViewInit {
 				conn.on("open", () => {
 					// do something
 				});
+        conn.on("close", () => {
+          this.fileConnChannelMap.delete(conn.peer);
+          if (conn.open)
+            conn.close();
+          console.log(conn.peer+": File Channel closed!");
+          // Remove vid
+          this.peerList.splice(this.peerList.indexOf(conn.peer),1);
+          let videoElement = document.getElementById('video-'+conn.peer) || null;
+          videoElement?.remove();
+          this.updateScreenPlacement(window.innerHeight);
+          console.log(conn.peer+": Media Connection closed!");
+        });
 			}
 		});
 	}
@@ -321,9 +339,9 @@ export class ClientComponent implements AfterViewInit {
 						else if (textStr.startsWith("list")) {
 							textStr = textStr.substring(5);
 							let list = textStr.split(",");
-							list.forEach(peer => {
+							list.forEach(async peer => {
 								if (peer != this.peerId)
-									this.connectWithPeer(peer);
+									await this.connectWithPeer(peer);
 							});
 						}
 					}
@@ -363,6 +381,8 @@ export class ClientComponent implements AfterViewInit {
 				audio: true
 			}).then((stream) => {
 				this.myStream = stream;
+        while (this.peerId == "")
+          continue;
 				this.createHtmlVideo(this.myStream, this.peerId);
 				this.isFirst = false;
 			}).catch(err => {
@@ -405,6 +425,7 @@ export class ClientComponent implements AfterViewInit {
 				break;
 			case 2:
 			case 3:
+				this.gridTemplateColumns = "1fr 1fr";
 				newHeight = windowHeight / 3;
 				if (newHeight * 1.77 > this.videoWidth/2)
 					newHeight = this.videoWidth/2/1.8;
@@ -419,6 +440,7 @@ export class ClientComponent implements AfterViewInit {
 			case 6:
 			case 7:
 			case 8:
+				this.gridTemplateColumns = "1fr 1fr 1fr";
 				newHeight = windowHeight / 4.5;
 				if (newHeight * 1.77 > this.videoWidth/3)
 					newHeight = this.videoWidth/3/1.8;

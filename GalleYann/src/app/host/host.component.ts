@@ -329,6 +329,7 @@ export class HostComponent implements AfterViewInit {
 				break;
 			case 2:
 			case 3:
+				this.gridTemplateColumns = "1fr 1fr";
 				newHeight = windowHeight / 3;
 				if (newHeight * 1.77 > this.videoWidth/2)
 					newHeight = this.videoWidth/2/1.8;
@@ -343,6 +344,7 @@ export class HostComponent implements AfterViewInit {
 			case 6:
 			case 7:
 			case 8:
+				this.gridTemplateColumns = "1fr 1fr 1fr";
 				newHeight = windowHeight / 4.5;
 				if (newHeight * 1.77 > this.videoWidth/3)
 					newHeight = this.videoWidth/3/1.8;
