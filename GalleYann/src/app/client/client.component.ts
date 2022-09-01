@@ -1,6 +1,6 @@
 import { ModelService } from '../model-service.service';
-import { AfterViewInit, Component, OnInit } from '@angular/core';
-import { DataConnection, Peer } from 'peerjs';
+import { AfterViewInit, Component, HostListener, OnInit } from '@angular/core';
+import { DataConnection, MediaConnection, Peer } from 'peerjs';
 import { ActivatedRoute, ParamMap } from '@angular/router';
 import { SharedService } from '../shared-service.service';
 import * as FileSaver from 'file-saver';
@@ -17,7 +17,8 @@ export class ClientComponent implements AfterViewInit {
   private peer: Peer;
   peerId = "";
   roomId : string;
-  private myStream: any;
+  private myStream: MediaStream;
+  private mediaConnMap = new Map<string, MediaConnection>();
   private connChannelMap = new Map<string, DataConnection>();
   private fileConnChannelMap = new Map<string, DataConnection>();
   private currentFile : any;
@@ -64,6 +65,7 @@ export class ClientComponent implements AfterViewInit {
     this.sideDisplay = "none";
     this.roomId = "";
     this.fileName = "";
+    this.myStream = new MediaStream();
 
     this.name = _modelService.name;
 
@@ -108,6 +110,30 @@ export class ClientComponent implements AfterViewInit {
         this.connectWithPeer(this.roomId);
       });
     });
+  }
+
+  @HostListener("window:beforeunload", ['$event'])
+  disconnect(event : Event) {
+    /*
+    // DataChannel -> message, ftp
+    this.connChannelMap.forEach(dataChannel => {
+      dataChannel.close();
+    });
+    this.fileConnChannelMap.forEach(dataChannel => {
+      dataChannel.close();
+    });
+
+    // MediaStream -> mediaConnections
+    this.mediaConnMap.forEach(mediaConnection => {
+      mediaConnection.peerConnection.close();
+      mediaConnection.close();
+    });
+    */
+    // peer
+    this.peerConnectionList.forEach(peerConnection => {
+      peerConnection.close();
+    });
+    this.peer.destroy();
   }
 
   func = (resizeEvent : UIEvent) => {
@@ -176,14 +202,14 @@ export class ClientComponent implements AfterViewInit {
     });
   }
 
-  public createHtmlVideo(stream : any) {
+  public createHtmlVideo(stream : any, peerID : string) {
     const video = document.createElement('video');
     video.style.setProperty("margin","5px");
     video.classList.add('video');
     video.autoplay = true;
     video.muted = this.peerList.length == 0 ? true : false;
     video.srcObject = stream;
-    video.id = "video-"+this.peerList.length;
+    video.id = "video-"+peerID;
     video.className="videoElement";
     video.play();
     const videoElement = document.getElementById('remote-video') || null;
@@ -205,11 +231,12 @@ export class ClientComponent implements AfterViewInit {
 
     this.peer.on('call', (call) => {
       call.answer(this.myStream);
+      this.mediaConnMap.set(call.peer,call);
       call.on('stream', (remoteStream) => {
         if (!this.peerList.includes(call.peer)) {
           this.peerConnectionList.push(call.peerConnection);
           this.peerList.push(call.peer);
-          this.createHtmlVideo(remoteStream);
+          this.createHtmlVideo(remoteStream,call.peer);
         }
       });
     });
@@ -250,7 +277,7 @@ export class ClientComponent implements AfterViewInit {
           // do something
         });
       }
-    })
+    });
   }
 
   async connectWithPeer(targetPeer : string): Promise<void> {
@@ -269,7 +296,14 @@ export class ClientComponent implements AfterViewInit {
         let message = new MessageBlock(data as MessageBlock);
         this._sharedService.emitChange(message);
       });
+      conn.on("close", () => {
+        this.connChannelMap.delete(conn.peer);
+        if (conn.open)
+          conn.close();
+        console.log(conn.peer+": Message Channel closed!");
+      });
     });
+
     var fileConn = this.peer.connect(targetPeer, {label:"ftp"});
     this.fileConnChannelMap.set(targetPeer,fileConn);
     fileConn.on('open', () => {
@@ -303,9 +337,21 @@ export class ClientComponent implements AfterViewInit {
           console.log(error);
         }
 
-      })
+      });
+      fileConn.on("close", () => {
+        this.fileConnChannelMap.delete(fileConn.peer);
+        if (fileConn.open)
+          fileConn.close();
+        console.log(fileConn.peer+": File Channel closed!");
+        // Remove vid
+        this.peerList.splice(this.peerList.indexOf(fileConn.peer),1);
+        let videoElement = document.getElementById('video-'+fileConn.peer) || null;
+        videoElement?.remove();
+        this.updateScreenPlacement(window.innerHeight);
+        console.log(fileConn.peer+": Media Connection closed!");
+      });
       fileConn.send("list");
-    })
+    });
   }
 
   private async callPeer(targetId: string) {
@@ -317,19 +363,25 @@ export class ClientComponent implements AfterViewInit {
         audio: true
       }).then((stream) => {
         this.myStream = stream;
-        this.createHtmlVideo(this.myStream);
+        this.createHtmlVideo(this.myStream, this.peerId);
         this.isFirst = false;
       }).catch(err => {
         console.log(err + 'Unable to get media');
       });
     }
     let call = this.peer.call(targetId, this.myStream);
+    this.mediaConnMap.set(call.peer,call);
     call.on('stream', (remoteStream) => {
       if (!this.peerList.includes(call.peer)) {
         this.peerConnectionList.push(call.peerConnection);
         this.peerList.push(call.peer);
-        this.createHtmlVideo(remoteStream);
+        this.createHtmlVideo(remoteStream, call.peer);
       }
+    });
+    call.on("close", () => {
+      console.log("Host closed!");
+      if (call.open)
+        call.close();
     });
   }
 
@@ -339,7 +391,14 @@ export class ClientComponent implements AfterViewInit {
     let count = this.peerList.length;
     let newHeight = 0;
     switch (count) {
+      case 0:
+        this.gridTemplateColumns = "1fr";
+        newHeight = windowHeight / 1.1;
+        if (newHeight * 1.77 > this.videoWidth/1.5)
+          newHeight = this.videoWidth/1.5/1.8;
+        break;
       case 1:
+        this.gridTemplateColumns = "1fr 1fr";
         newHeight = windowHeight / 2;
         if (newHeight * 1.77 > this.videoWidth/2)
           newHeight = this.videoWidth/2/1.8;
@@ -383,10 +442,12 @@ export class ClientComponent implements AfterViewInit {
       default:
         break;
     }
-    for (let i=0;i<=count;i++) {
-      const videoElement = document.getElementById('video-'+i) || null;
+    let videoElement = document.getElementById('video-'+this.peerId) || null;
+    videoElement?.style.setProperty("height",newHeight+"px");
+    this.peerList.forEach(peerID => {
+      videoElement = document.getElementById('video-'+peerID) || null;
       videoElement?.style.setProperty("height",newHeight+"px");
-    }
+    });
   }
 
   screenShare(): void {
@@ -438,5 +499,4 @@ export class ClientComponent implements AfterViewInit {
       // @ts-ignore
       videoElement.srcObject = new MediaStream([videoTrack]);
   }
-
 }
