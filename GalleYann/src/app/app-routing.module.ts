@@ -9,17 +9,17 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
 const routes: Routes = [
-  {path: 'host', component:HostComponent},
-  {path: 'client/:id', component:ClientComponent},
-  {path: 'guest/:id', component:ClientComponent},
-  {path: 'galle/login', component:GalleLoginComponent},
-  {path: 'galle', component:GalleComponent},
-  {path: '', component:HomeComponent},
-  {path: '**', component:PageNotFoundComponent}
+	{path: 'host', component:HostComponent},
+	{path: 'client/:id', component:ClientComponent},
+	{path: 'guest/:id', component:ClientComponent},
+	{path: 'galle/login', component:GalleLoginComponent},
+	{path: 'galle', component:GalleComponent},
+	{path: '', component:HomeComponent},
+	{path: '**', component:PageNotFoundComponent}
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+	imports: [RouterModule.forRoot(routes)],
+	exports: [RouterModule]
 })
 export class AppRoutingModule { }

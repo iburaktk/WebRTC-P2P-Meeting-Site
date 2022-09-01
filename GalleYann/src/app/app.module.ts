@@ -18,23 +18,23 @@ import { SharedService } from './shared-service.service';
 import { ModelService } from './model-service.service';
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    HostComponent,
-    ClientComponent,
-    PageNotFoundComponent,
-    HomeComponent,
-    ChatComponent,
-    GalleComponent,
-    GalleLoginComponent
-  ],
-  imports: [
-    BrowserModule,
-    HttpClientModule,
-    AppRoutingModule,
-    FormsModule
-  ],
-  providers: [SharedService, ModelService],
-  bootstrap: [AppComponent]
+	declarations: [
+		AppComponent,
+		HostComponent,
+		ClientComponent,
+		PageNotFoundComponent,
+		HomeComponent,
+		ChatComponent,
+		GalleComponent,
+		GalleLoginComponent
+	],
+	imports: [
+		BrowserModule,
+		HttpClientModule,
+		AppRoutingModule,
+		FormsModule
+	],
+	providers: [SharedService, ModelService],
+	bootstrap: [AppComponent]
 })
 export class AppModule { }
