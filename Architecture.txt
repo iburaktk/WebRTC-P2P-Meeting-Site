@@ -1,11 +1,11 @@
 chat -> 
 	SharedService
 		new ->	Yeni gelen mesaj
-		requestToSendFile ->	yeni dosya gönderme isteği diyaloğu
-		-> acceptFile	-->	tuşa basınca kabul ettiğini bildir host/client'a
-		-> message		-->	mesajları host/client'a gönder.
-		-> file 		-->	filename'i gönder
-		-> data			--> dosyayı gönder
+		requestToSendFile	-->	yeni dosya gönderme isteği diyaloğu
+		-> acceptFile		-->	tuşa basınca kabul ettiğini bildir host/client'a
+		-> message			-->	mesajları host/client'a gönder.
+		-> file 			-->	filename'i gönder
+		-> data				--> dosyayı gönder
 
 client ->
 	SharedService
@@ -17,6 +17,7 @@ client ->
 	MessageChannel
 		data -> ChatComponent'a gelen mesajı ilet
 	FileChannel
+		user -> username'i al, peerNameDict'e set et ve kendi ismini gönder
 		name -> dosya ismini host'tan al. ChatComponent'a request at -> ss requestToSendFile
 		acceptFile -> host kabul etmiş. Dosyayı gönder
 		data -> FileSaver.saveAs
@@ -31,6 +32,7 @@ host ->
 	MessageChannel
 		data -> ChatComponent'a gelen mesajı ilet
 	FileChannel
+		user -> username'i al, peerNameDict'e set et ve kendi ismini gönder
 		name -> dosya ismini host'tan al. ChatComponent'a request at -> ss requestToSendFile
 		acceptFile -> host kabul etmiş. Dosyayı gönder
 		data -> FileSaver.saveAs

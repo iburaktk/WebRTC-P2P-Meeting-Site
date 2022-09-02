@@ -1,5 +1,5 @@
 import { ModelService } from '../model-service.service';
-import { AfterViewInit, Component, HostListener, OnInit } from '@angular/core';
+import { AfterContentChecked, AfterViewInit, ChangeDetectorRef, Component, HostListener, OnInit, ViewEncapsulation } from '@angular/core';
 import { DataConnection, MediaConnection, Peer } from 'peerjs';
 import { ActivatedRoute, ParamMap } from '@angular/router';
 import { SharedService } from '../shared-service.service';
@@ -8,9 +8,10 @@ import { MessageBlock } from '../app.component';
 @Component({
 	selector: 'app-client',
 	templateUrl: './client.component.html',
-	styleUrls: ['./client.component.css']
+	styleUrls: ['./client.component.css'],
+	encapsulation: ViewEncapsulation.None
 })
-export class ClientComponent implements AfterViewInit {
+export class ClientComponent implements AfterViewInit,  AfterContentChecked {
 
 	//#region Declarations
 
@@ -18,6 +19,7 @@ export class ClientComponent implements AfterViewInit {
 	peerId = "";
 	roomId : string;
 	private myStream: MediaStream;
+	peerNameDict = new Map<string, string>();
 	private mediaConnMap = new Map<string, MediaConnection>();
 	private connChannelMap = new Map<string, DataConnection>();
 	private fileConnChannelMap = new Map<string, DataConnection>();
@@ -38,13 +40,17 @@ export class ClientComponent implements AfterViewInit {
 	isChatScreenOpen : boolean;
 	isPeopleScreenOpen : boolean;
 	sideScreenWidth : number;
-	sideDisplay : string;
+	chatSideDisplay : string;
+  participantsSideDisplay : string;
 
 	name : string;
 
 	//#endregion Declarations
 
-	constructor(private _Activatedroute:ActivatedRoute, private _sharedService : SharedService, private _modelService : ModelService) {
+	constructor(private _Activatedroute : ActivatedRoute,
+              private _sharedService : SharedService,
+              private _modelService : ModelService,
+              private changeDetector : ChangeDetectorRef) {
 
 		//#region Initial Values
 
@@ -62,7 +68,8 @@ export class ClientComponent implements AfterViewInit {
 		this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
 		this.isChatScreenOpen = false;
 		this.isPeopleScreenOpen = false;
-		this.sideDisplay = "none";
+		this.chatSideDisplay = "none";
+    this.participantsSideDisplay = "none";
 		this.roomId = "";
 		this.fileName = "";
 		this.myStream = new MediaStream();
@@ -103,7 +110,7 @@ export class ClientComponent implements AfterViewInit {
 		this._Activatedroute.paramMap.subscribe(params => {
 			setTimeout(() => {
 				this.roomId = params.get('id') || "";
-				// throw ""
+				// throw "" || page-not-found
 				this._sharedService.emitChange("id "+this.roomId);
 				window.addEventListener('resize', this.func);
 				this.getPeerId();
@@ -112,29 +119,22 @@ export class ClientComponent implements AfterViewInit {
 		});
 	}
 
+  ngAfterContentChecked(): void {
+    this.changeDetector.detectChanges();
+  }
+
 	@HostListener("window:beforeunload", ['$event'])
 	disconnect(event : Event) {
-		/*
-		// DataChannel -> message, ftp
-		this.connChannelMap.forEach(dataChannel => {
-			dataChannel.close();
-		});
-		this.fileConnChannelMap.forEach(dataChannel => {
-			dataChannel.close();
-		});
-
-		// MediaStream -> mediaConnections
-		this.mediaConnMap.forEach(mediaConnection => {
-			mediaConnection.peerConnection.close();
-			mediaConnection.close();
-		});
-		*/
-		// peer
 		this.peerConnectionList.forEach(peerConnection => {
 			peerConnection.close();
 		});
 		this.peer.destroy();
 	}
+
+  updateName(peerID : string, name : string) {
+    const videoElement = document.getElementById('name-'+peerID) as HTMLDivElement;
+    videoElement.textContent = name;
+  }
 
 	func = (resizeEvent : UIEvent) => {
 		this.updateScreenPlacement(window.innerHeight);
@@ -177,17 +177,29 @@ export class ClientComponent implements AfterViewInit {
 		if (this.isChatScreenOpen) {
 			this.isPeopleScreenOpen = false;
 			this.sideScreenWidth = 300;
-			this.sideDisplay = "block";
+      this.participantsSideDisplay = "none";
+			this.chatSideDisplay = "block";
 		}
 		else {
 			this.sideScreenWidth = 0;
-			this.sideDisplay = "none";
+			this.chatSideDisplay = "none";
 		}
 		this.updateScreenPlacement(window.innerHeight);
 	}
 
 	public togglePeople() {
-
+    this.isPeopleScreenOpen = !this.isPeopleScreenOpen;
+    if (this.isPeopleScreenOpen) {
+      this.isChatScreenOpen = false;
+      this.sideScreenWidth = 300;
+      this.chatSideDisplay = "none";
+      this.participantsSideDisplay = "block";
+    }
+    else {
+      this.sideScreenWidth = 0;
+      this.participantsSideDisplay = "none";
+    }
+    this.updateScreenPlacement(window.innerHeight);
 	}
 
 	public sendMessage(message : MessageBlock) {
@@ -203,24 +215,35 @@ export class ClientComponent implements AfterViewInit {
 	}
 
 	public createHtmlVideo(stream : any, peerID : string) {
-		const video = document.createElement('video');
-		video.style.setProperty("margin","5px");
-		video.classList.add('video');
+		const text = document.createElement('div');
+    text.classList.add('participant-name');
+    text.id = "name-"+peerID;
+    text.textContent = peerID;
+
+    const video = document.createElement('video');
+		video.style.setProperty("height","100%");
 		video.autoplay = true;
 		video.muted = this.peerList.length == 0 ? true : false;
 		video.srcObject = stream;
 		video.id = "video-"+peerID;
-		video.className="videoElement";
 		video.play();
-		const videoElement = document.getElementById('remote-video') || null;
-		if (videoElement == null)
-			throw Error("Video html element cannot found!");
 		video.addEventListener("dblclick", () => {
 			video.requestFullscreen().catch((e) => console.log(e));
 		});
 		// @ts-ignore
 		video.disablePictureInPicture = true;
-		videoElement.append(video);
+
+    const frame = document.createElement('div');
+    frame.style.setProperty("position","relative");
+    frame.style.setProperty("margin","5px");
+    frame.id = "div-"+peerID;
+    frame.append(video);
+    frame.append(text);
+
+		const videoElement = document.getElementById('remote-video') || null;
+		if (videoElement == null)
+			throw Error("Video html element cannot found!");
+		videoElement.append(frame);
 		this.updateScreenPlacement(window.innerHeight);
 	}
 
@@ -257,6 +280,9 @@ export class ClientComponent implements AfterViewInit {
 			}
 			else if (conn.label == "ftp") {
 				this.fileConnChannelMap.set(conn.peer,conn);
+				conn.on("open", () => {
+					conn.send("user-"+this.name);
+				});
 				conn.on('data', (data) => {
 					try {
 						let textStr = data as string;
@@ -267,6 +293,12 @@ export class ClientComponent implements AfterViewInit {
 							}
 							else if (textStr.startsWith("acceptFile")) {
 								conn.send(this.currentFile);
+							}
+							else if (textStr.startsWith("user")) {
+								if (textStr.charAt(4) == '-')
+									conn.send("user "+this.name);
+								this.peerNameDict.set(conn.peer, textStr.substring(5));
+                this.updateName(conn.peer,textStr.substring(5));
 							}
 						}
 						else {
@@ -279,9 +311,6 @@ export class ClientComponent implements AfterViewInit {
 						console.log(error);
 					}
 				});
-				conn.on("open", () => {
-					// do something
-				});
 				conn.on("close", () => {
 					this.fileConnChannelMap.delete(conn.peer);
 					if (conn.open)
@@ -289,7 +318,7 @@ export class ClientComponent implements AfterViewInit {
 					console.log(conn.peer+": File Channel closed!");
 					// Remove vid
 					this.peerList.splice(this.peerList.indexOf(conn.peer),1);
-					let videoElement = document.getElementById('video-'+conn.peer) || null;
+					let videoElement = document.getElementById('div-'+conn.peer) || null;
 					videoElement?.remove();
 					this.updateScreenPlacement(window.innerHeight);
 					console.log(conn.peer+": Media Connection closed!");
@@ -345,6 +374,12 @@ export class ClientComponent implements AfterViewInit {
 									await this.connectWithPeer(peer);
 							});
 						}
+						else if (textStr.startsWith("user")) {
+							if (textStr.charAt(4) == '-')
+								fileConn.send("user "+this.name);
+							this.peerNameDict.set(fileConn.peer, textStr.substring(5));
+              this.updateName(fileConn.peer,textStr.substring(5));
+            }
 					}
 					else {
 						var myData = data as ArrayBuffer;
@@ -364,12 +399,13 @@ export class ClientComponent implements AfterViewInit {
 				console.log(fileConn.peer+": File Channel closed!");
 				// Remove vid
 				this.peerList.splice(this.peerList.indexOf(fileConn.peer),1);
-				let videoElement = document.getElementById('video-'+fileConn.peer) || null;
+				let videoElement = document.getElementById('div-'+fileConn.peer) || null;
 				videoElement?.remove();
 				this.updateScreenPlacement(window.innerHeight);
 				console.log(fileConn.peer+": Media Connection closed!");
 			});
-			fileConn.send("list");
+			fileConn.send("user-"+this.name);
+			fileConn.send("list");  // Check this
 		});
 	}
 
@@ -385,6 +421,7 @@ export class ClientComponent implements AfterViewInit {
 				while (this.peerId == "")
 					continue;
 				this.createHtmlVideo(this.myStream, this.peerId);
+        this.updateName(this.peerId, this.name);
 				this.isFirst = false;
 			}).catch(err => {
 				console.log(err + 'Unable to get media');
@@ -492,10 +529,10 @@ export class ClientComponent implements AfterViewInit {
 			default:
 				break;
 		}
-		let videoElement = document.getElementById('video-'+this.peerId) || null;
+		let videoElement = document.getElementById('div-'+this.peerId) || null;
 		videoElement?.style.setProperty("height",newHeight+"px");
 		this.peerList.forEach(peerID => {
-			videoElement = document.getElementById('video-'+peerID) || null;
+			videoElement = document.getElementById('div-'+peerID) || null;
 			videoElement?.style.setProperty("height",newHeight+"px");
 		});
 	}
@@ -506,7 +543,7 @@ export class ClientComponent implements AfterViewInit {
 
 	private shareScreen(): void {
 		// @ts-ignore
-		navigator.mediaDevices.getDisplayMedia().then(stream => {
+		navigator.mediaDevices.getDisplayMedia().then((stream : MediaStream) => {
 			const videoTrack = stream.getVideoTracks()[0];
 			videoTrack.onended = () => {
 				if (this.screen)

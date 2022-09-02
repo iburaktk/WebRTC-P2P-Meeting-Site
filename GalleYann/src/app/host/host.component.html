@@ -2,8 +2,17 @@
   <div style="align-items: center; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
     <div class="videoGrid" id="remote-video" [style.grid-template-columns]="gridTemplateColumns"></div>
   </div>
-  <div class="chatSide" [style.display]="sideDisplay">
+  <div class="chatSide" [style.display]="chatSideDisplay">
     <app-chat></app-chat>
+  </div>
+  <div class="participantsSide" [style.display]="participantsSideDisplay">
+    <!--
+    <ng-container *ngFor="let user of peerNameDict">
+      <h2>
+
+      </h2>
+    </ng-container>
+    -->
   </div>
 </div>
 

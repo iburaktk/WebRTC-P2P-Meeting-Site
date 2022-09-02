@@ -1,5 +1,4 @@
-import { ViewEncapsulation } from '@angular/core';
-import { Component, OnInit } from '@angular/core';
+import { ViewEncapsulation, Component, OnInit } from '@angular/core';
 import { MessageBlock } from '../app.component';
 import { SharedService } from '../shared-service.service';
 
@@ -62,8 +61,6 @@ export class ChatComponent implements OnInit {
 							chatHistory.prepend(fileDialogBox);
 						}
 					}
-					else
-						console.log("text: "+textStr);
 				}
 				else {
 					let message = data as MessageBlock;
@@ -84,12 +81,12 @@ export class ChatComponent implements OnInit {
 	}
 
 	public uploadFile() {
-		var input = document.createElement('input') as HTMLInputElement;
+		var input = document.createElement('input');
 		input.type = 'file';
 
 		input.onchange = (e) => {
-      let myTarget = e.target as HTMLInputElement;
-			this.file = myTarget.files?[0] : File;
+      //@ts-ignore
+			this.file = e.target.files[0];
 
 			if (this.file == null || this.file == undefined)
 				throw new Error("Empty file!");

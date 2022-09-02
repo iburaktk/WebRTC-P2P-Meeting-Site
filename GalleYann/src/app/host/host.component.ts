@@ -1,5 +1,5 @@
 import { ModelService } from './../model-service.service';
-import { Component, OnInit, Output, EventEmitter, AfterViewInit, HostListener } from '@angular/core';
+import { Component, ViewEncapsulation, AfterViewInit, HostListener, ChangeDetectorRef, AfterContentChecked } from '@angular/core';
 import { Peer, DataConnection, MediaConnection } from 'peerjs';
 import { SharedService } from './../shared-service.service';
 import * as FileSaver from 'file-saver';
@@ -8,16 +8,18 @@ import { MessageBlock } from '../app.component';
 @Component({
 	selector: 'app-host',
 	templateUrl: './host.component.html',
-	styleUrls: ['./host.component.css']
+	styleUrls: ['./host.component.css'],
+  encapsulation: ViewEncapsulation.None
 })
 
-export class HostComponent implements AfterViewInit {
+export class HostComponent implements AfterViewInit, AfterContentChecked {
 
 	//#region Declarations
 
 	private peer: Peer;
 	peerId = "";
 	private myStream: MediaStream;
+	peerNameDict = new Map<string, string>();
 	private mediaConnMap = new Map<string, MediaConnection>();
 	private connChannelMap = new Map<string, DataConnection>();
 	private fileConnChannelMap = new Map<string, DataConnection>();
@@ -38,13 +40,16 @@ export class HostComponent implements AfterViewInit {
 	isChatScreenOpen : boolean;
 	isPeopleScreenOpen : boolean;
 	sideScreenWidth : number;
-	sideDisplay : string;
+	chatSideDisplay : string;
+	participantsSideDisplay : string;
 
 	name : string;
 
 	//#endregion Declarations
 
-	constructor(private _sharedService : SharedService, private _modelService : ModelService) {
+	constructor(private _sharedService : SharedService,
+							private _modelService : ModelService,
+							private changeDetector: ChangeDetectorRef) {
 
 		//#region Initial Values
 
@@ -66,12 +71,12 @@ export class HostComponent implements AfterViewInit {
 		this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
 		this.isChatScreenOpen = false;
 		this.isPeopleScreenOpen = false;
-		this.sideDisplay = "none";
+		this.chatSideDisplay = "none";
+		this.participantsSideDisplay = "none";
 		this.fileName = "";
 		this.myStream = new MediaStream();
 
 		this.name = _modelService.name;
-
 		//#endregion Initial Values
 
 		_sharedService.changeEmitted$.subscribe(data => {
@@ -104,31 +109,27 @@ export class HostComponent implements AfterViewInit {
 	}
 
 	ngAfterViewInit(): void {
-		this.getPeerId();
 		window.addEventListener('resize', this.func);
+		this.getPeerId();
+		this.peerNameDict.set(this.peerId,this.name);
+	}
+
+	ngAfterContentChecked(): void {
+		this.changeDetector.detectChanges();
 	}
 
 	@HostListener("window:beforeunload", ['$event'])
 	disconnect(event : Event) {
-		/*
-		// DataChannel -> message, ftp
-		this.connChannelMap.forEach(dataChannel => {
-			dataChannel.close();
-		});
-		this.fileConnChannelMap.forEach(dataChannel => {
-			dataChannel.close();
-		});
-		// MediaStream -> myStream
-		this.mediaConnMap.forEach(mediaConnection => {
-			mediaConnection.close();
-		});
-		*/
-		// peer
 		this.peerConnectionList.forEach(peerConnection => {
 			peerConnection.close();
 		});
 		this.peer.destroy();
 	}
+
+  updateName(peerID : string, name : string) {
+    const videoElement = document.getElementById('name-'+peerID) as HTMLDivElement;
+    videoElement.textContent = name;
+  }
 
 	func = (resizeEvent : UIEvent) => {
 		this.updateScreenPlacement(window.innerHeight);
@@ -171,17 +172,29 @@ export class HostComponent implements AfterViewInit {
 		if (this.isChatScreenOpen) {
 			this.isPeopleScreenOpen = false;
 			this.sideScreenWidth = 300;
-			this.sideDisplay = "block";
+			this.participantsSideDisplay = "none";
+			this.chatSideDisplay = "block";
 		}
 		else {
 			this.sideScreenWidth = 0;
-			this.sideDisplay = "none";
+			this.chatSideDisplay = "none";
 		}
 		this.updateScreenPlacement(window.innerHeight);
 	}
 
 	public togglePeople() {
-
+		this.isPeopleScreenOpen = !this.isPeopleScreenOpen;
+		if (this.isPeopleScreenOpen) {
+			this.isChatScreenOpen = false;
+			this.sideScreenWidth = 300;
+			this.chatSideDisplay = "none";
+			this.participantsSideDisplay = "block";
+		}
+		else {
+			this.sideScreenWidth = 0;
+			this.participantsSideDisplay = "none";
+		}
+		this.updateScreenPlacement(window.innerHeight);
 	}
 
 	public sendMessage(message : any) {
@@ -197,29 +210,41 @@ export class HostComponent implements AfterViewInit {
 	}
 
 	public createHtmlVideo(stream : any, peerID : string) {
+		const text = document.createElement('div');
+		text.classList.add('participant-name');
+		text.id = "name-"+peerID;
+		text.textContent = peerID;
+
 		const video = document.createElement('video');
-		video.style.setProperty("margin","5px");
-		video.classList.add('video');
+		video.style.setProperty("height","100%");
 		video.autoplay = true;
 		video.muted = this.peerList.length == 0 ? true : false;
 		video.srcObject = stream;
 		video.id = "video-"+peerID;
-		video.className="videoElement";
 		video.play();
-		const videoElement = document.getElementById('remote-video') || null;
-		if (videoElement == null)
-			throw Error("Video html element cannot found!");
 		video.addEventListener("dblclick", () => {
 			video.requestFullscreen().catch((e) => console.log(e));
 		});
 		// @ts-ignore
 		video.disablePictureInPicture = true;
-		videoElement.append(video);
+
+		const frame = document.createElement('div');
+		frame.style.setProperty("position","relative");
+		frame.style.setProperty("margin","5px");
+		frame.id = "div-"+peerID;
+		frame.append(video);
+		frame.append(text);
+
+		const videoElement = document.getElementById('remote-video') || null;
+		if (videoElement == null)
+			throw Error("Video html element cannot found!");
+		videoElement.append(frame);
 		this.updateScreenPlacement(window.innerHeight);
 	}
 
 	private getPeerId = () => {
 		this.peer.on('open', () => {
+      console.log("printed");
 			this._sharedService.emitChange("id "+this.peerId);
 		});
 
@@ -233,6 +258,7 @@ export class HostComponent implements AfterViewInit {
 				}).then((stream) => {
 					this.myStream = stream;
 					this.createHtmlVideo(this.myStream, this.peerId);
+          this.updateName(this.peerId,this.name);
 					this.isFirst = false;
 				}).catch(err => {
 					console.log(err + 'Unable to get media');
@@ -265,6 +291,9 @@ export class HostComponent implements AfterViewInit {
 			}
 			else if (conn.label == "ftp") {
 				this.fileConnChannelMap.set(conn.peer,conn);
+				conn.on("open", () => {
+					conn.send("user-"+this.name);
+				});
 				conn.on('data', (data) => {
 					try {
 						let textStr = data as string;
@@ -279,6 +308,12 @@ export class HostComponent implements AfterViewInit {
 							else if (textStr.startsWith("list")) {
 								conn.send("list "+this.peerList.toString());
 							}
+							else if (textStr.startsWith("user")) {
+								if (textStr.charAt(4) == '-')
+									conn.send("user "+this.name);
+								this.peerNameDict.set(conn.peer, textStr.substring(5));
+                this.updateName(conn.peer,textStr.substring(5));
+              }
 						}
 						else {
 							var myData = data as ArrayBuffer;
@@ -290,9 +325,6 @@ export class HostComponent implements AfterViewInit {
 						console.log(error);
 					}
 				});
-				conn.on("open", () => {
-					// do something
-				});
 				conn.on("close", () => {
 					this.fileConnChannelMap.delete(conn.peer);
 					if (conn.open)
@@ -300,7 +332,7 @@ export class HostComponent implements AfterViewInit {
 					console.log(conn.peer+": File Channel closed!");
 					// Remove vid
 					this.peerList.splice(this.peerList.indexOf(conn.peer),1);
-					let videoElement = document.getElementById('video-'+conn.peer) || null;
+					let videoElement = document.getElementById('div-'+conn.peer) || null;
 					videoElement?.remove();
 					this.updateScreenPlacement(window.innerHeight);
 					console.log(conn.peer+": Media Connection closed!");
@@ -313,7 +345,7 @@ export class HostComponent implements AfterViewInit {
 		this.videoWidth = window.innerWidth - this.sideScreenWidth - 15;
 		let count = this.peerList.length;
 		let newHeight = 0;
-    windowHeight = windowHeight * 0.88;
+		windowHeight = windowHeight * 0.88;
 		switch (count) {
 			case 0:
 				this.gridTemplateColumns = "1fr";
@@ -322,44 +354,44 @@ export class HostComponent implements AfterViewInit {
 					newHeight = this.videoWidth/1.8;
 				break;
 			case 1:
-        if (windowHeight/2*1.77 > this.videoWidth/2) {
-          this.gridTemplateColumns = "1fr";
-          newHeight = windowHeight / 2.05;
-        }
-        else {
-          this.gridTemplateColumns = "1fr 1fr";
-          newHeight = windowHeight / 1.6;
-          if (newHeight * 1.77 > this.videoWidth/2)
-            newHeight = this.videoWidth/2/1.85;
-        }
+				if (windowHeight/2*1.77 > this.videoWidth/2) {
+					this.gridTemplateColumns = "1fr";
+					newHeight = windowHeight / 2.05;
+				}
+				else {
+					this.gridTemplateColumns = "1fr 1fr";
+					newHeight = windowHeight / 1.6;
+					if (newHeight * 1.77 > this.videoWidth/2)
+						newHeight = this.videoWidth/2/1.85;
+				}
 				break;
 			case 2:
-        if (windowHeight/3*1.77 > this.videoWidth/2) {
-          this.gridTemplateColumns = "1fr";
-          newHeight = windowHeight / 3.1;
-        }
-        else if (windowHeight/2*1.77 < this.videoWidth/3) {
-          this.gridTemplateColumns = "1fr 1fr 1fr";
-          newHeight = this.videoWidth/3/1.8;
-        }
-        else {
-          this.gridTemplateColumns = "1fr 1fr";
-          newHeight = windowHeight / 2.05;
-          if (newHeight * 1.77 > this.videoWidth/2)
-            newHeight = this.videoWidth/2/1.8;
-        }
-        break;
+				if (windowHeight/3*1.77 > this.videoWidth/2) {
+					this.gridTemplateColumns = "1fr";
+					newHeight = windowHeight / 3.1;
+				}
+				else if (windowHeight/2*1.77 < this.videoWidth/3) {
+					this.gridTemplateColumns = "1fr 1fr 1fr";
+					newHeight = this.videoWidth/3/1.8;
+				}
+				else {
+					this.gridTemplateColumns = "1fr 1fr";
+					newHeight = windowHeight / 2.05;
+					if (newHeight * 1.77 > this.videoWidth/2)
+						newHeight = this.videoWidth/2/1.8;
+				}
+				break;
 			case 3:
-        if (windowHeight/4*1.77 > this.videoWidth/2) {
-          this.gridTemplateColumns = "1fr";
-          newHeight = windowHeight / 4.15;
-        }
-        else {
-          this.gridTemplateColumns = "1fr 1fr";
-          newHeight = windowHeight / 2.1;
-          if (newHeight * 1.77 > this.videoWidth/2)
-            newHeight = this.videoWidth/2/1.8;
-        }
+				if (windowHeight/4*1.77 > this.videoWidth/2) {
+					this.gridTemplateColumns = "1fr";
+					newHeight = windowHeight / 4.15;
+				}
+				else {
+					this.gridTemplateColumns = "1fr 1fr";
+					newHeight = windowHeight / 2.1;
+					if (newHeight * 1.77 > this.videoWidth/2)
+						newHeight = this.videoWidth/2/1.8;
+				}
 				break;
 			case 4:
 			case 5:
@@ -395,10 +427,10 @@ export class HostComponent implements AfterViewInit {
 			default:
 				break;
 		}
-		let videoElement = document.getElementById('video-'+this.peerId) || null;
+		let videoElement = document.getElementById('div-'+this.peerId) || null;
 		videoElement?.style.setProperty("height",newHeight+"px");
 		this.peerList.forEach(peerID => {
-			videoElement = document.getElementById('video-'+peerID) || null;
+			videoElement = document.getElementById('div-'+peerID) || null;
 			videoElement?.style.setProperty("height",newHeight+"px");
 		});
 	}
@@ -408,7 +440,7 @@ export class HostComponent implements AfterViewInit {
 	}
 
 	private shareScreen(): void {
-    // @ts-ignore
+	  // @ts-ignore
 		navigator.mediaDevices.getDisplayMedia().then((stream : MediaStream) => {
 			const videoTrack = stream.getVideoTracks()[0];
 			videoTrack.onended = () => {
