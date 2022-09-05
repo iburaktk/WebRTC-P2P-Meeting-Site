@@ -22,10 +22,6 @@
   font-weight: 500;
 }
 
-.card-container .card:not(:last-child) {
-  margin-right: 0;
-}
-
 .card.card-small {
   height: 16px;
   width: 168px;
@@ -60,4 +56,10 @@
 
 .card svg.material-icons path {
   fill: #888;
+}
+
+.error {
+  color: red;
+  text-align: center;
+  margin: 0;
 }

@@ -91,3 +91,9 @@
 .card svg.material-icons path {
   fill: #888;
 }
+
+.error {
+  color: red;
+  text-align: center;
+  margin-top: 5px;
+}

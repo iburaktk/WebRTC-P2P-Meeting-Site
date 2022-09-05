@@ -2,26 +2,33 @@
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 14.1.0.
 
-## Development server
+## Introduction
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+This project is a meeting site that uses peer-to-peer socket connection provided by WebRTC PeerJS framework.
 
-## Code scaffolding
+### WebRTC
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+With [WebRTC](https://webrtc.org), you can add real-time communication capabilities to your application that works on top of an open standard. It supports video, voice, and generic data to be sent between peers. 
 
-## Build
+The technology is available on all modern browsers as well as on native clients for all major platforms. The technologies behind WebRTC are implemented as an open web standard and available as regular JavaScript APIs in all major browsers. For native clients, like Android and iOS applications, a library is available that provides the same functionality. 
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+The WebRTC project is open-source and supported by Apple, Google, Microsoft and Mozilla, amongst others.
 
-## Running unit tests
+### PeerJS
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+[PeerJS](https://github.com/peers/peerjs) provides API built on top of WebRTC, supporting WebRTC's features with PeerJS's own [PeerServer](https://github.com/peers/peerjs-server).
 
-## Running end-to-end tests
+## Features
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+- Multiple user connection
+- Text messaging
+- Audio call
+- Video call
+- Screen Sharing
+- File transfer
 
-## Further help
+## To do
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+- Encryption
+- Screen Recording
+- Administrative Management

@@ -9,10 +9,14 @@ import { Router } from '@angular/router';
 })
 export class GalleLoginComponent implements OnInit {
 	userDict = new Map<string, string>();
+  username : string;
+  password : string;
 
 	constructor(private router : Router,private _modelService : ModelService) {
 		this.userDict.set("VB12345","İ. Burak Tanrıkulu");
 		this.userDict.set("SA12345","Av. Ali Veli");
+    this.username = "";
+    this.password = "";
 	 }
 
 	ngOnInit(): void {

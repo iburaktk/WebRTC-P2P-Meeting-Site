@@ -11,8 +11,26 @@
     Veya
   </div>
   <div class="card-container">
-    <input placeholder="Oda numarasını giriniz" style="text-align: center;" class="card" type="text" #roomNumber/>
-    <input placeholder="İsminizi giriniz" style="text-align: center;" class="card" type="text" #userName/>
+    <div style="margin: 0;">
+      <input placeholder="Oda numarasını giriniz" class="card" style="text-align: center;" type="text" [(ngModel)]="roomID" #roomNumber="ngModel" required minlength="6" maxlength="6"/>
+      <div *ngIf="roomNumber.invalid && (roomNumber.dirty || roomNumber.touched)" class="alert error">
+        <div *ngIf="roomNumber.errors?.['required']">
+          Oda numarasını boş bırakmayınız.
+        </div>
+        <div *ngIf="roomNumber.errors?.['minlength']">
+          Oda numarası 6 haneli olmalıdır.
+        </div>
+      </div>
+    </div>
+    <div style="margin: 0;">
+      <input placeholder="İsminizi giriniz" class="card" style="text-align: center;" type="text" [(ngModel)]="name" #userName="ngModel" required/>
+      <div *ngIf="userName.invalid && (userName.dirty || userName.touched)" class="alert error">
+        <div *ngIf="userName.errors?.['required']">
+          İsminizi boş bırakmayınız.
+        </div>
+      </div>
+    </div>
+
     <button class="card" (click)="connectAsGuest(roomNumber.value, userName.value)"  style="background-color: #fcba00;">
       <span style="color: white;">Misafir olarak devam et</span>
       <svg class="material-icons" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">

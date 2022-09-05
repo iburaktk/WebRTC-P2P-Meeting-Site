@@ -10,10 +10,12 @@ import { ModelService } from '../model-service.service';
 export class GalleComponent implements OnInit {
 	name : string;
 	sicil : string;
+  roomID : string;
 
 	constructor(private router : Router,private _modelService : ModelService) {
 		this.name = _modelService.name;
 		this.sicil = _modelService.sicil;
+    this.roomID = "";
 	}
 
 	ngOnInit(): void {

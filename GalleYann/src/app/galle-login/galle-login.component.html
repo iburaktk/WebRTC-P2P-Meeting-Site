@@ -3,9 +3,28 @@
     <div class="card-container">
       <h1 style="margin: 5px;">Galle</h1>
       <h2 style="font-size: 1em;">Kullanıcı Sicili</h2>
-      <input class="card" placeholder="SA00000" #sicil>
+      <div style="margin: 0;">
+        <input class="card" placeholder="SA00000" [(ngModel)]="username" #sicil="ngModel" required minlength="7" maxlength="7">
+        <div *ngIf="sicil.invalid && (sicil.dirty || sicil.touched)" class="alert error">
+          <div *ngIf="sicil.errors?.['required']">
+            Sicil numaranızı boş bırakmayınız.
+          </div>
+          <div *ngIf="sicil.errors?.['minlength']">
+            Sicil numaranız 7 haneli olmalıdır.
+          </div>
+        </div>
+      </div>
+
       <h2 style="font-size: 1em;">Şifre</h2>
-      <input class="card" type="password" #pass>
+      <div style="margin: 0;">
+        <input class="card" type="password" [(ngModel)]="password" #pass="ngModel" required>
+        <div *ngIf="pass.invalid && (pass.dirty || pass.touched)" class="alert error">
+          <div *ngIf="pass.errors?.['required']">
+            Şifrenizi boş bırakmayınız.
+          </div>
+        </div>
+      </div>
+
       <button class="btn myButton" type="submit" (click)="giris(sicil.value,pass.value)">Giriş Yap</button>
     </div>
   </div>

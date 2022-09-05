@@ -9,8 +9,13 @@ import { SharedService } from '../shared-service.service';
 	styleUrls: ['./home.component.css']
 })
 export class HomeComponent implements OnInit {
+  roomID : string;
+  name : string;
+
 	constructor(private router : Router, private _sharedService : SharedService, private _modelService : ModelService) {
 		this._sharedService.emitChange("hide");
+    this.roomID = "";
+    this.name = "";
 	 }
 
 	ngOnInit(): void {
