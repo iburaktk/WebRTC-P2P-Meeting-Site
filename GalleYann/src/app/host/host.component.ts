@@ -1,3 +1,4 @@
+import { NavigationStart, Router } from '@angular/router';
 import { ModelService } from './../model-service.service';
 import { Component, ViewEncapsulation, AfterViewInit, HostListener, ChangeDetectorRef, AfterContentChecked } from '@angular/core';
 import { Peer, DataConnection, MediaConnection } from 'peerjs';
@@ -49,7 +50,8 @@ export class HostComponent implements AfterViewInit, AfterContentChecked {
 
 	constructor(private _sharedService : SharedService,
 							private _modelService : ModelService,
-							private changeDetector: ChangeDetectorRef) {
+							private changeDetector: ChangeDetectorRef,
+              private router : Router) {
 
 		//#region Initial Values
 
@@ -106,6 +108,12 @@ export class HostComponent implements AfterViewInit, AfterContentChecked {
 				console.log(ex);
 			}
 		});
+
+    router.events.subscribe((event) => {
+      let myEvent = event as NavigationStart;
+      if (myEvent.navigationTrigger === 'popstate')
+        this.disconnect(new Event("popstate event"));
+    });
 	}
 
 	ngAfterViewInit(): void {
@@ -118,8 +126,19 @@ export class HostComponent implements AfterViewInit, AfterContentChecked {
 		this.changeDetector.detectChanges();
 	}
 
+	@HostListener("window:popstete", ['$event'])
 	@HostListener("window:beforeunload", ['$event'])
 	disconnect(event : Event) {
+    const videoElement = document.getElementById('video-'+this.peerId) as HTMLMediaElement;
+    (videoElement.srcObject as MediaStream).getVideoTracks().forEach(videoTrack => {
+      videoTrack.stop();
+      (videoElement.srcObject as MediaStream).removeTrack(videoTrack);
+    });
+    (videoElement.srcObject as MediaStream).getAudioTracks().forEach((audioTrack) => {
+      audioTrack.stop();
+      (videoElement.srcObject as MediaStream).removeTrack(audioTrack);
+    });
+    videoElement.srcObject = null;
 		this.peerConnectionList.forEach(peerConnection => {
 			peerConnection.close();
 		});

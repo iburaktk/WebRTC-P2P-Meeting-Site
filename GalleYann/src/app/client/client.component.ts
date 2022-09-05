@@ -1,7 +1,7 @@
 import { ModelService } from '../model-service.service';
-import { AfterContentChecked, AfterViewInit, ChangeDetectorRef, Component, HostListener, OnInit, ViewEncapsulation } from '@angular/core';
+import { AfterContentChecked, AfterViewInit, ChangeDetectorRef, Component, HostListener, ViewEncapsulation } from '@angular/core';
 import { DataConnection, MediaConnection, Peer } from 'peerjs';
-import { ActivatedRoute, ParamMap } from '@angular/router';
+import { ActivatedRoute, NavigationStart, ParamMap, Router } from '@angular/router';
 import { SharedService } from '../shared-service.service';
 import * as FileSaver from 'file-saver';
 import { MessageBlock } from '../app.component';
@@ -50,7 +50,8 @@ export class ClientComponent implements AfterViewInit,  AfterContentChecked {
 	constructor(private _Activatedroute : ActivatedRoute,
               private _sharedService : SharedService,
               private _modelService : ModelService,
-              private changeDetector : ChangeDetectorRef) {
+              private changeDetector : ChangeDetectorRef,
+              private router : Router) {
 
 		//#region Initial Values
 
@@ -104,6 +105,12 @@ export class ClientComponent implements AfterViewInit,  AfterContentChecked {
 				console.log(ex);
 			}
 		});
+
+    router.events.subscribe((event) => {
+      let myEvent = event as NavigationStart;
+      if (myEvent.navigationTrigger === 'popstate')
+        this.disconnect(new Event("popstate event"));
+    });
 	}
 
 	ngAfterViewInit(): void {
@@ -123,8 +130,19 @@ export class ClientComponent implements AfterViewInit,  AfterContentChecked {
     this.changeDetector.detectChanges();
   }
 
+  @HostListener("window:popstete", ['$event'])
 	@HostListener("window:beforeunload", ['$event'])
 	disconnect(event : Event) {
+    const videoElement = document.getElementById('video-'+this.peerId) as HTMLMediaElement;
+    (videoElement.srcObject as MediaStream).getVideoTracks().forEach(videoTrack => {
+      videoTrack.stop();
+      (videoElement.srcObject as MediaStream).removeTrack(videoTrack);
+    });
+    (videoElement.srcObject as MediaStream).getAudioTracks().forEach((audioTrack) => {
+      audioTrack.stop();
+      (videoElement.srcObject as MediaStream).removeTrack(audioTrack);
+    });
+    videoElement.srcObject = null;
 		this.peerConnectionList.forEach(peerConnection => {
 			peerConnection.close();
 		});
