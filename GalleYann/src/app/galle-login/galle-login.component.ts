@@ -27,6 +27,7 @@ export class GalleLoginComponent implements OnInit {
 			this._modelService.name = this.userDict.get(sicil) || "";
 			this.router.navigate(['/galle']);
 		}
+    // user check
 	}
 
 }

@@ -1,6 +1,6 @@
 <div style="margin: 3%;">
   <div class="card-container">
-    <button class="card" (click)="goToGalle()" style="background-color: #fcba00;">
+    <button class="card" (click)="goToGalle()">
       <span style="color: white;">Galle ile giriş yap</span>
       <svg class="material-icons" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <button class="card" (click)="connectAsGuest(roomNumber.value, userName.value)"  style="background-color: #fcba00;">
+    <button class="card" [disabled]="userName.invalid || roomNumber.invalid" (click)="connectAsGuest(roomNumber.value, userName.value)">
       <span style="color: white;">Misafir olarak devam et</span>
       <svg class="material-icons" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>

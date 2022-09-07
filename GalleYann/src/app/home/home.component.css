@@ -58,6 +58,16 @@
   fill: #888;
 }
 
+.card:is(button):disabled {
+  background-color: #888;
+}
+
+.card:is(button) {
+  background-color: #fcba00;
+}
+
+
+
 .error {
   color: red;
   text-align: center;

@@ -1,6 +1,6 @@
 <div style="margin: 3%;">
   <div class="card-container">
-    <button class="card" (click)="createRoom()" style="background-color: #fcba00;">
+    <button class="card" (click)="createRoom()">
       <span style="color: white;">Oda oluştur</span>
       <svg class="material-icons" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
@@ -22,7 +22,7 @@
         </div>
       </div>
     </div>
-    <button class="card" (click)="connect(roomNumber.value)"  style="background-color: #fcba00;">
+    <button class="card" [disabled]="roomNumber.invalid" (click)="connect(roomNumber.value)">
       <span style="color: white;">Oda numarası ile bağlan</span>
       <svg class="material-icons" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>

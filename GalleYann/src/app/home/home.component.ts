@@ -26,6 +26,7 @@ export class HomeComponent implements OnInit {
 	}
 
 	connectAsGuest(roomNumber : string, userName : string) {
+
 		this._modelService.name = userName;
 		this.router.navigate(['/guest',roomNumber]);
 	}
